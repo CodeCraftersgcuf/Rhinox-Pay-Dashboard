@@ -8,12 +8,14 @@ interface ProfileProps {
 
 const Profile: React.FC<ProfileProps> = ({ name = "Admin", img }) => {
   return (
-    <div className="flex items-center gap-4 ">
-      <div>
-        {/* <h4 className="text-lg ">Hey,</h4> */}
-        <h2 className="text-lg">{name},Admin</h2>
-      </div>
-      <img src={img} alt="profile" className="w-14 h-14 rounded-md" />
+    <div className="flex items-center gap-4">
+      <img 
+        src={img || images.profile_image} 
+        alt="profile" 
+        className="rounded-full object-cover" 
+        style={{ width: '53px', height: '53px' }}
+      />
+      <h2 className="text-white text-lg" style={{ fontWeight: 400 }}>Hey Admin</h2>
     </div>
   );
 };

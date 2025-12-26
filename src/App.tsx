@@ -33,7 +33,8 @@ import UserManagementGym from "./pages/userManegement_dropDown_portion/UserManag
 import AdminManagement from "./pages/setting/admin/AdminManagement";
 import AdminProfile from "./pages/setting/admin/AdminProfile";
 import Login from "./auth/Login";
-import Register from "./auth/Register";
+import AuthenticatorSetup from "./auth/AuthenticatorSetup";
+import AuthenticatorCode from "./auth/AuthenticatorCode";
 
 
 
@@ -42,7 +43,8 @@ const App: React.FC = () => {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/authenticator-setup" element={<AuthenticatorSetup />} />
+        <Route path="/authenticator-code" element={<AuthenticatorCode />} />
         {/* Layout Wraps All Routes */}
         <Route path="/" element={<Layout />}>
           <Route path="dashboard" element={<Dashboard />} />

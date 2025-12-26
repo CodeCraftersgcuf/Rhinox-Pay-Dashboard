@@ -18,17 +18,24 @@ const Layout: React.FC = () => {
         <Sidebar setMobileOpen={setMobileOpen} />
       </div>
       {/* Main Content */}
-      <div className="w-full h-screen overflow-auto transition-all duration-300">
+      <div 
+        className="w-full h-screen overflow-auto transition-all duration-300"
+        style={{
+          background: 'linear-gradient(90deg, #05161A 0%, #020C19 100%)'
+        }}
+      >
         <div>
-          <div className="min-h-[72px] sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 py-2  border-b border-gray-200 bg-white">
+          <div 
+            className="min-h-[72px] sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 py-2"
+            style={{ backgroundColor: '#020B16' }}
+          >
             <div className="flex items-center gap-2">
               <button
-                className="block lg:hidden"
+                className="block lg:hidden text-white"
                 onClick={() => setMobileOpen(!mobileOpen)}
               >
                 <i className="bi bi-list text-4xl"></i>
               </button>
-              {/* <Agents agents={TopbarProfileLeft} /> */}
             </div>
             <div>
               <Profile />

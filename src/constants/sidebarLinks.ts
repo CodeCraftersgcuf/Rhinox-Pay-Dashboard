@@ -4,108 +4,91 @@ export const Sidebar_links = [
   {
     name: "Dashboard",
     link: "/dashboard",
-    icon: images.dashboard,
+    icon: images.SquaresFour,
     sublinks: [],
   },
  {
   name: 'User Managment',
   link: '/user/management',
-  icon: images.user,
-  sublinks: [
-    {
-      name: "social",
-      link: "/social",
-    },
-    {
-      name: "connect",
-      link: "/connect",
-    },
-    {
-      name: "Market",
-      link: "/market",
-    },
-    {
-      name: "Gym Hub",
-      link: "/gymhub",
-    },
-  ],
+  icon: images.user_icon,
+  sublinks: [],
  },
  {
   name: 'Transactions',
   link: '/transaction',
-  icon: images.transaction,
+  icon: images.transaction_icon,
   sublinks: [],
  },
  
  {
   name: 'Subcriptions',
   link: '/subcription',
-  icon: images.subcription,
+  icon: images.rates_icon,
   sublinks: [],
  },
  
  {
   name: 'Verifications',
   link: '/verification',
-  icon: images.verification,
+  icon: images.kyc_icon,
   sublinks: [],
  },
  
  {
   name: 'Ads Managment',
   link: '/ads',
-  icon: images.ads,
+  icon: images.bitcoin_wallet,
   sublinks: [],
  },
  
  {
   name: 'Social Managment',
   link: '/social',
-  icon: images.social,
+  icon: images.user_group,
   sublinks: [],
  },
  
  {
   name: 'Connect Managment',
   link: '/connect',
-  icon: images.love,
+  icon: images.user_group_icon,
   sublinks: [],
  },
  
  {
   name: 'Market Managment',
   link: '/market',
-  icon: images.market,
+  icon: images.rates_icon,
   sublinks: [],
  },
  {
   name: 'Gym Paddy Managment',
   link: '/gym',
-  icon: images.gym,
+  icon: images.user_icon,
   sublinks: [],
  },
  {
   name: 'Analytics & Report',
   link: '/analytics',
-  icon: images.report,
+  icon: images.analytics_up,
   sublinks: [],
  },
   {
     name: "Support",
     link: "/support",
-    icon: images.support,
+    icon: images.customer_support,
     sublinks: [],
   },
   {
     name: "notification",
     link: "/notification",
-    icon: images.Bell,
+    icon: images.notification_icon,
     sublinks: [],
   },
   {
     name: "Settings",
     link: "/settings",
-    icon: images.setting,
+    icon: images.setting_icon,
     sublinks: [],
   },
 ];
