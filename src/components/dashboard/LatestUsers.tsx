@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import images from "../../constants/images";
 
 interface User {
@@ -12,6 +13,7 @@ interface User {
 }
 
 const LatestUsers: React.FC = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
@@ -502,6 +504,7 @@ const LatestUsers: React.FC = () => {
                   <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={() => navigate(`/user/management/profile/${user.id}`)}
                         className="text-xs font-medium"
                         style={{
                           width: '97px',
@@ -509,12 +512,14 @@ const LatestUsers: React.FC = () => {
                           borderRadius: '100px',
                           backgroundColor: "#A9EF45",
                           color: 'black',
-                          fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif'
+                          fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
+                          cursor: 'pointer'
                         }}
                       >
                         User Details
                       </button>
                       <button
+                        onClick={() => navigate(`/user/management/${user.id}/transactions`)}
                         className="text-white text-xs font-medium"
                         style={{
                           width: '97px',
@@ -522,7 +527,8 @@ const LatestUsers: React.FC = () => {
                           borderRadius: '100px',
                           backgroundColor: "#000000",
                           color: 'white',
-                          fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif'
+                          fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
+                          cursor: 'pointer'
                         }}
                       >
                         Transactions

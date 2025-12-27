@@ -29,6 +29,10 @@ const images = {
   analytics_up_green: '/src/assets/images/analytics-up-green.png',
   Rectangle_36: '/src/assets/images/Rectangle-36.png',
   avater1: '/src/assets/images/avater1.png',
+  pluscircle: '/src/assets/images/PlusCircle.png',
+  flag: '/src/assets/images/flag11.png',
+  vector5: '/src/assets/images/Vector5.png',
+  SpinnerGap: '/src/assets/images/SpinnerGap.png',
 };
 
 export default images;
