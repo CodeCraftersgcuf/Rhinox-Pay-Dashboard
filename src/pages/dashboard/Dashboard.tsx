@@ -78,10 +78,10 @@ const Dashboard: React.FC = () => {
           >
             Dashboard
           </h1>
-          <p className="text-gray-400 text-base mt-[20px] md:text-lg">View your dashboard details</p>
+          <p className="text-base mt-[20px] md:text-lg" style={{ color: '#757E81' }}>View your dashboard details</p>
         </div>
         <div className="flex flex-col mt-4 md:mt-0">
-          <div className="flex gap-[10px] mb-[15px] flex-wrap md:flex-nowrap">
+          <div className="flex gap-[10px] mb-[15px] mt-2 flex-wrap md:flex-nowrap">
             {timeRanges.map((range) => (
               <button
                 key={range}

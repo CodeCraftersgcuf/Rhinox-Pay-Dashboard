@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getUsers, User } from "../../../services/userService";
 import images from "../../../constants/images";
+import EditProfileModal from "../../../components/userManagement/EditProfileModal";
+import KYCDetailsModal from "../../../components/userManagement/KYCDetailsModal";
 
 const UserProfile: React.FC = () => {
   const { username } = useParams();
+  const navigate = useNavigate();
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -13,6 +16,8 @@ const UserProfile: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [activities, setActivities] = useState<Array<{ id: string; activity: string; date: string }>>([]);
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [showKYCDetailsModal, setShowKYCDetailsModal] = useState(false);
   const kebabMenuRef = useRef<HTMLDivElement | null>(null);
   const bulkActionDropdownRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,7 +107,7 @@ const UserProfile: React.FC = () => {
   const nameParts = user.name.split(" ");
   const firstName = nameParts.slice(0, -1).join(" ") || nameParts[0];
   const lastName = nameParts[nameParts.length - 1] || "";
-
+  
   return (
     <div>
       {/* Top Navigation Bar Container */}
@@ -110,7 +115,7 @@ const UserProfile: React.FC = () => {
         className="md:mx-[-32px] mx-[-16px] md:mt-[-32px] mt-[-16px] mb-6 md:mb-6"
         style={{
           background: 'linear-gradient(to right, #0B1B20, #0A1320)',
-          width: 'calc(100% + 32px)'
+          width: 'calc(100% + 64px)'
         }}
       >
         {/* Top Navigation Bar */}
@@ -120,7 +125,7 @@ const UserProfile: React.FC = () => {
             width: '100%',
             height: '50px',
             paddingLeft: '16px',
-            paddingRight: '16px',
+            paddingRight: '0px',
             display: 'flex',
             alignItems: 'center',
             boxSizing: 'border-box',
@@ -144,7 +149,8 @@ const UserProfile: React.FC = () => {
               height: '100%',
               display: 'flex',
               alignItems: 'center',
-              position: 'relative'
+              position: 'relative',
+              marginLeft: '16px'
             }}
           >
             User Profile
@@ -160,6 +166,7 @@ const UserProfile: React.FC = () => {
             ></span>
           </button>
           <button
+            onClick={() => navigate(`/user/management/${username}/wallet`)}
             className="text-gray-400 hover:text-white transition-colors"
             style={{
               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -177,6 +184,7 @@ const UserProfile: React.FC = () => {
             User Wallet
           </button>
           <button
+            onClick={() => navigate(`/user/management/${username}/transactions`)}
             className="text-gray-400 hover:text-white transition-colors"
             style={{
               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -194,6 +202,7 @@ const UserProfile: React.FC = () => {
             Transactions
           </button>
           <button
+            onClick={() => navigate(`/user/management/${username}/p2p`)}
             className="text-gray-400 hover:text-white transition-colors"
             style={{
               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -242,7 +251,7 @@ const UserProfile: React.FC = () => {
               User Profile
             </h1>
             <p
-              className="text-gray-400"
+              className="mt-[20px]"
               style={{
                 fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                 fontWeight: 400,
@@ -250,13 +259,14 @@ const UserProfile: React.FC = () => {
                 fontSize: '14px',
                 lineHeight: '100%',
                 letterSpacing: '0%',
+                color: '#757E81'
               }}
             >
               View manage user details
             </p>
           </div>
           <div
-            className="flex gap-[10px] flex-wrap md:flex-nowrap"
+            className="flex gap-[10px] flex-wrap md:flex-nowrap mt-2"
             style={{
               borderBottomWidth: '0.3px',
               borderBottomStyle: 'solid',
@@ -684,6 +694,7 @@ const UserProfile: React.FC = () => {
                     General Registration
                   </h3>
                   <button
+                    onClick={() => setShowEditProfileModal(true)}
                     className="text-black"
                     style={{
                       width: '80px',
@@ -927,6 +938,7 @@ const UserProfile: React.FC = () => {
                     General Registration
                   </h3>
                   <button
+                    onClick={() => setShowKYCDetailsModal(true)}
                     className="text-black"
                     style={{
                       width: '80px',
@@ -1378,6 +1390,18 @@ const UserProfile: React.FC = () => {
         </div>
       </div>
 
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        isOpen={showEditProfileModal}
+        onClose={() => setShowEditProfileModal(false)}
+        user={user}
+      />
+
+      {/* KYC Details Modal */}
+      <KYCDetailsModal
+        isOpen={showKYCDetailsModal}
+        onClose={() => setShowKYCDetailsModal(false)}
+      />
     </div>
   );
 };

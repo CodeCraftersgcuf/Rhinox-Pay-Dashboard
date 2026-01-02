@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import UserMetricCards from "../../components/userManagement/UserMetricCards";
 import UserManagementTopBar from "../../components/userManagement/UserManagementTopBar";
 import UserManagementTable from "../../components/userManagement/UserManagementTable";
+import AddNewUserModal from "../../components/userManagement/AddNewUserModal";
 
 const UserManagement: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
@@ -9,6 +10,7 @@ const UserManagement: React.FC = () => {
   const [kycFilter, setKycFilter] = useState<string>("All");
   const [showKycDropdown, setShowKycDropdown] = useState(false);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
 
   const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
@@ -65,17 +67,18 @@ const UserManagement: React.FC = () => {
             >
               User Management
             </h1>
-            <p className="text-gray-400 mt-[20px]" style={{
+            <p className="mt-[20px]" style={{
               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
               fontWeight: 400,
               fontStyle: 'normal',
               fontSize: '14px',
               lineHeight: '100%',
-              letterSpacing: '0%'
+              letterSpacing: '0%',
+              color: '#757E81'
             }}>View manage user details</p>
           </div>
           <div className="flex flex-col mt-4 md:mt-0">
-            <div className="flex gap-[10px] mb-[15px] flex-wrap md:flex-nowrap">
+            <div className="flex gap-[10px] mb-[15px] mt-2 flex-wrap md:flex-nowrap">
               {timeRanges.map((range) => (
                 <button
                   key={range}
@@ -136,6 +139,7 @@ const UserManagement: React.FC = () => {
         setShowKycDropdown={setShowKycDropdown}
         showBulkActionDropdown={showBulkActionDropdown}
         setShowBulkActionDropdown={setShowBulkActionDropdown}
+        onAddUserClick={() => setShowAddUserModal(true)}
       />
 
       {/* Latest Users Table Section */}
@@ -143,6 +147,12 @@ const UserManagement: React.FC = () => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         kycFilter={kycFilter}
+      />
+
+      {/* Add New User Modal */}
+      <AddNewUserModal
+        isOpen={showAddUserModal}
+        onClose={() => setShowAddUserModal(false)}
       />
     </div>
   );

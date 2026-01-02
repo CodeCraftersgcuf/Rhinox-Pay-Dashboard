@@ -22,10 +22,12 @@ import Social from "./pages/userManagement/portions/social/Social";
 import UserManagement from "./pages/userManagement/UserManagement";
 import Notification from "./pages/notification/Notification";
 import UserProfile from "./pages/userManagement/portions/UserProfile";
+import UserWallet from "./pages/userManagement/portions/UserWallet";
 import GymHub from "./pages/userManagement/portions/gymhub/GymHub";
 import UserChat from "./pages/userManagement/portions/chat/UserChat";
 import UserVerification from "./pages/userManagement/portions/verification/UserVerification";
 import UserTransaction from "./pages/userManagement/portions/transactions/UserTransaction";
+import P2PProfile from "./pages/userManagement/portions/p2p/P2PProfile";
 import UserManagementSocial from "./pages/userManegement_dropDown_portion/UserManagement_Social/UserManagementSocial";
 import UserManagementConnect from "./pages/userManegement_dropDown_portion/UserManagement_Connect/UserManagementConnect";
 import UserManagementMarket from "./pages/userManegement_dropDown_portion/UserManagement_Market/UserManagementMarket";
@@ -51,6 +53,7 @@ const App: React.FC = () => {
           {/* user management */}
           <Route path="user/management" element={<UserManagement />} />
           <Route path="user/management/profile/:username" element={<UserProfile />} />
+          <Route path="user/management/:username/wallet" element={<UserWallet />} />
           <Route path="user/management/:username/social" element={<Social />} />
           <Route path="user/management/:username/market" element={<Market />} />
           <Route path="user/management/:username/connect" element={<Connect />} />
@@ -58,6 +61,7 @@ const App: React.FC = () => {
           <Route path="/user/management/:username/chat" element={<UserChat />} />
           <Route path="/user/management/:username/verifications" element={<UserVerification />} />
           <Route path="/user/management/:username/transactions" element={<UserTransaction />} />
+          <Route path="/user/management/:username/p2p" element={<P2PProfile />} />
 
 
           {/* dropdown pages */}

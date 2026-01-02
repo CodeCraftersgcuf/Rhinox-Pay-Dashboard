@@ -8,6 +8,7 @@ interface UserManagementTopBarProps {
   setShowKycDropdown: (show: boolean) => void;
   showBulkActionDropdown: boolean;
   setShowBulkActionDropdown: (show: boolean) => void;
+  onAddUserClick: () => void;
 }
 
 const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
@@ -16,7 +17,8 @@ const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
   showKycDropdown,
   setShowKycDropdown,
   showBulkActionDropdown,
-  setShowBulkActionDropdown
+  setShowBulkActionDropdown,
+  onAddUserClick
 }) => {
   const kycDropdownRef = useRef<HTMLDivElement | null>(null);
   const bulkActionDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -201,6 +203,7 @@ const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
         </div>
         {/* Right Side - Add New User Button */}
         <button
+          onClick={onAddUserClick}
           className="text-black flex items-center gap-2"
           style={{
             height: '42px',
