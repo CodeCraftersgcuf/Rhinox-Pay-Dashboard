@@ -8,8 +8,8 @@ import Setting from "./pages/setting/Setting";
 import Support from "./pages/support/Support";
 
 import Transaction from "./pages/transaction/Transaction";
-import Subcription from "./pages/subcription/Subcription";
-import Verification from "./pages/verification/Verification";
+import KYC from "./pages/kyc/KYC";
+import WalletManagement from "./pages/walletManagement/WalletManagement";
 import Ads from "./pages/ads/Ads";
 import Analytics from "./pages/analytics/Analytics";
 import SocialManagement from "./pages/social/SocialManagement";
@@ -71,8 +71,8 @@ const App: React.FC = () => {
           <Route path="user/management/gymhub" element={<UserManagementGym />} />
 
           <Route path="transaction" element={<Transaction />} />
-          <Route path="subcription" element={<Subcription />} />
-          <Route path="verification" element={<Verification />} />
+          <Route path="kyc" element={<KYC />} />
+          <Route path="wallet-management" element={<WalletManagement />} />
           <Route path="ads" element={<Ads />} />
           <Route path="social" element={<SocialManagement />} />
           <Route path="connect" element={<ConnectManagement />} />

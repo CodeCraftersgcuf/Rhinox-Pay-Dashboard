@@ -6,7 +6,7 @@ export interface User {
   email: string;
   phone: string;
   walletBalance: string;
-  kycStatus: "verified" | "unverified";
+  kycStatus: "verified" | "unverified" | "rejected";
 }
 
 // Option 1: Load from JSON file (for development/mock data)
@@ -67,6 +67,14 @@ const getFallbackUsers = (): User[] => [
     phone: "08012345678",
     walletBalance: "N15,000",
     kycStatus: "verified"
+  },
+  {
+    id: "6",
+    name: "John Doe",
+    email: "john.doe@example.com",
+    phone: "09123456789",
+    walletBalance: "N10,000",
+    kycStatus: "rejected"
   }
 ];
 

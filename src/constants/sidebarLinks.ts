@@ -7,72 +7,72 @@ export const Sidebar_links = [
     icon: images.SquaresFour,
     sublinks: [],
   },
- {
-  name: 'User Managment',
-  link: '/user/management',
-  icon: images.user_icon,
-  sublinks: [],
- },
- {
-  name: 'Transactions',
-  link: '/transaction',
-  icon: images.transaction_icon,
-  sublinks: [],
- },
- 
- {
-  name: 'Subcriptions',
-  link: '/subcription',
-  icon: images.rates_icon,
-  sublinks: [],
- },
- 
- {
-  name: 'Verifications',
-  link: '/verification',
-  icon: images.kyc_icon,
-  sublinks: [],
- },
- 
- {
-  name: 'Ads Managment',
-  link: '/ads',
-  icon: images.bitcoin_wallet,
-  sublinks: [],
- },
- 
- {
-  name: 'Social Managment',
-  link: '/social',
-  icon: images.user_group,
-  sublinks: [],
- },
- 
- {
-  name: 'Connect Managment',
-  link: '/connect',
-  icon: images.user_group_icon,
-  sublinks: [],
- },
- 
- {
-  name: 'Market Managment',
-  link: '/market',
-  icon: images.rates_icon,
-  sublinks: [],
- },
- {
-  name: 'Gym Paddy Managment',
-  link: '/gym',
-  icon: images.user_icon,
-  sublinks: [],
- },
- {
-  name: 'Analytics & Report',
-  link: '/analytics',
-  icon: images.analytics_up,
-  sublinks: [],
- },
+  {
+    name: 'User Managment',
+    link: '/user/management',
+    icon: images.user_icon,
+    sublinks: [],
+  },
+  {
+    name: 'Transactions',
+    link: '/transaction',
+    icon: images.transaction_icon,
+    sublinks: [],
+  },
+
+  {
+    name: 'KYC',
+    link: '/kyc',
+    icon: images.kyc_icon,
+    sublinks: [],
+  },
+
+  {
+    name: 'Wallet Management',
+    link: '/wallet-management',
+    icon: images.bitcoin_wallet,
+    sublinks: [],
+  },
+
+  {
+    name: 'Ads Managment',
+    link: '/ads',
+    icon: images.bitcoin_wallet,
+    sublinks: [],
+  },
+
+  {
+    name: 'Social Managment',
+    link: '/social',
+    icon: images.user_group,
+    sublinks: [],
+  },
+
+  {
+    name: 'Connect Managment',
+    link: '/connect',
+    icon: images.user_group_icon,
+    sublinks: [],
+  },
+
+  {
+    name: 'Market Managment',
+    link: '/market',
+    icon: images.rates_icon,
+    sublinks: [],
+  },
+  {
+    name: 'Gym Paddy Managment',
+    link: '/gym',
+    icon: images.user_icon,
+    sublinks: [],
+  },
+  {
+    name: 'Analytics & Report',
+    link: '/analytics',
+    icon: images.analytics_up,
+    sublinks: [],
+  },
   {
     name: "Support",
     link: "/support",

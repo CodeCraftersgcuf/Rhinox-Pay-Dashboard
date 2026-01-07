@@ -43,7 +43,8 @@ const UserMetricCards: React.FC<UserMetricCardsProps> = ({ totalUsers, newUsers,
                 fontStyle: 'normal',
                 fontSize: '30px',
                 lineHeight: '100%',
-                letterSpacing: '0%'
+                letterSpacing: '0%',
+                paddingTop: '4px'
               }}>{totalUsers}</h2>
             </div>
           </div>
@@ -81,7 +82,8 @@ const UserMetricCards: React.FC<UserMetricCardsProps> = ({ totalUsers, newUsers,
                 fontStyle: 'normal',
                 fontSize: '30px',
                 lineHeight: '100%',
-                letterSpacing: '0%'
+                letterSpacing: '0%',
+                paddingTop: '4px'
               }}>{newUsers}</h2>
             </div>
           </div>
@@ -119,7 +121,8 @@ const UserMetricCards: React.FC<UserMetricCardsProps> = ({ totalUsers, newUsers,
                 fontStyle: 'normal',
                 fontSize: '30px',
                 lineHeight: '100%',
-                letterSpacing: '0%'
+                letterSpacing: '0%',
+                paddingTop: '4px'
               }}>{activeUsers}</h2>
             </div>
           </div>

@@ -60,6 +60,7 @@ const images = {
   ChatCircle: '/src/assets/images/ChatCircle.png',
   Seal2: '/src/assets/images/Seal2.png',
   Seal3: '/src/assets/images/Seal3.png',
+  image34: '/src/assets/images/image%2034.png',
 };
 
 export default images;

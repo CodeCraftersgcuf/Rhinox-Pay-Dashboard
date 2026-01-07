@@ -32,6 +32,14 @@
     "kycStatus": "unverified"
   },
   {
+    "id": "6",
+    "name": "John Doe",
+    "email": "john.doe@example.com",
+    "phone": "09123456789",
+    "walletBalance": "N10,000",
+    "kycStatus": "rejected"
+  },
+  {
     "id": "5",
     "name": "Amina Yusuf",
     "email": "amina.yusuf@example.com",
