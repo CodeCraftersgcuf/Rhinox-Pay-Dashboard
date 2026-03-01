@@ -298,9 +298,13 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Analytics and Wallets Section */}
-      <div className="mt-8 flex gap-4 flex-wrap rounded-lg p-4" style={{ backgroundColor: '#0A1420' }}>
-        <Analytics selectedTimeRange={selectedTimeRange} />
-        <Wallets selectedTimeRange={selectedTimeRange} />
+      <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg p-4 lg:grid-cols-12" style={{ backgroundColor: '#0A1420' }}>
+        <div className="lg:col-span-7 min-w-0">
+          <Analytics selectedTimeRange={selectedTimeRange} />
+        </div>
+        <div className="lg:col-span-5 min-w-0">
+          <Wallets selectedTimeRange={selectedTimeRange} />
+        </div>
       </div>
 
       {/* Latest Users Section */}

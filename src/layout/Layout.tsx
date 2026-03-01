@@ -26,7 +26,7 @@ const Layout: React.FC = () => {
       >
         <div>
           <div 
-            className="min-h-[72px] sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 py-2"
+            className="min-h-[70px] sticky top-0 z-[100] flex justify-between items-center px-4 md:px-8 py-2"
             style={{ backgroundColor: '#020B16' }}
           >
             <div className="flex items-center gap-2">

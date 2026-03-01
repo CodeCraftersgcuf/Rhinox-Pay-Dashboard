@@ -733,9 +733,11 @@ const UserTransaction: React.FC = () => {
     }
   ];
 
-  // Get transactions based on selected action and transaction type
+  const normalizeText = (value: unknown) => String(value ?? "").toLowerCase().trim();
+
+  // Get transactions based on selected action, transaction type, and active filters
   const getTransactions = () => {
-    let transactions;
+    let transactions: any[] = [];
 
     if (transactionType === "Crypto") {
       transactions = cryptoTransactions;
@@ -764,8 +766,8 @@ const UserTransaction: React.FC = () => {
       }
     }
 
-    // Filter by status only for Crypto transactions
-    if (transactionType === "Crypto" && selectedStatus !== "All Status") {
+    // Status filter
+    if (selectedStatus !== "All Status") {
       const statusMap: Record<string, string> = {
         "Successful": "success",
         "Pending": "pending",
@@ -777,10 +779,103 @@ const UserTransaction: React.FC = () => {
       }
     }
 
+    if (transactionType === "Crypto") {
+      // Crypto action filter (All / Deposit / Withdraw / P2P)
+      if (selectedCryptoAction !== "All") {
+        const expectedAction = normalizeText(selectedCryptoAction);
+        transactions = transactions.filter((t) => {
+          const actionSource = normalizeText((t as any).id || (t as any).route || (t as any).transactionType);
+          return actionSource.includes(expectedAction);
+        });
+      }
+
+      // Token filter
+      if (selectedToken !== "Token") {
+        transactions = transactions.filter((t) => normalizeText((t as any).crypto) === normalizeText(selectedToken));
+      }
+    } else {
+      // Country filter
+      if (selectedCountry !== "Country" && selectedCountry !== "All Countries") {
+        transactions = transactions.filter((t) => normalizeText((t as any).country) === normalizeText(selectedCountry));
+      }
+
+      // Tx Type/Route filter (for Send/Fund/Withdraw modes)
+      const isTxTypeActive =
+        selectedTxType !== "Tx Type" &&
+        selectedTxType !== "Route" &&
+        selectedTxType !== "All types" &&
+        selectedTxType !== "All Routes";
+
+      if (isTxTypeActive && selectedAction !== "Convert" && selectedAction !== "P2P" && selectedAction !== "Bill Payments") {
+        transactions = transactions.filter((t) => {
+          const route = normalizeText((t as any).route);
+          const paymentMethod = normalizeText((t as any).paymentMethod);
+          const type = normalizeText((t as any).type);
+          const expected = normalizeText(selectedTxType);
+          return route.includes(expected) || paymentMethod.includes(expected) || type.includes(expected);
+        });
+      }
+
+      // Buy filter for P2P / Bill Payments
+      if (selectedAction === "P2P" && selectedBuy !== "Buy" && selectedBuy !== "All Trades") {
+        const expectedSide = selectedBuy === "Buy Trades" ? "buy" : "sell";
+        transactions = transactions.filter((t) => {
+          const side = normalizeText((t as any).p2pType || (t as any).transactionType);
+          return side.includes(expectedSide);
+        });
+      }
+
+      if (selectedAction === "Bill Payments" && selectedBuy !== "Buy" && selectedBuy !== "All Bill Payments") {
+        transactions = transactions.filter((t) => {
+          const type = normalizeText((t as any).type);
+          return type.includes(normalizeText(selectedBuy));
+        });
+      }
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = normalizeText(searchQuery);
+      transactions = transactions.filter((t) => {
+        const searchableValues = [
+          (t as any).id,
+          (t as any).amount,
+          (t as any).amountSent,
+          (t as any).received,
+          (t as any).status,
+          (t as any).country,
+          (t as any).route,
+          (t as any).type,
+          (t as any).conversion,
+          (t as any).rate,
+          (t as any).date,
+          (t as any).recipient,
+          (t as any).vendorName,
+          (t as any).crypto,
+          (t as any).network
+        ];
+        return searchableValues.some((value) => normalizeText(value).includes(query));
+      });
+    }
+
     return transactions;
   };
 
   const transactions = getTransactions();
+
+  useEffect(() => {
+    setSelectedTransactions(new Set());
+  }, [
+    transactionType,
+    selectedAction,
+    selectedStatus,
+    selectedCountry,
+    selectedTxType,
+    selectedBuy,
+    selectedToken,
+    selectedCryptoAction,
+    searchQuery
+  ]);
 
   const handleSelectAll = () => {
     if (selectedTransactions.size === transactions.length && transactions.length > 0) {
@@ -1110,10 +1205,7 @@ const UserTransaction: React.FC = () => {
               <button
                 key={action}
                 onClick={() => setSelectedAction(action)}
-                className={`font-normal transition-colors whitespace-nowrap ${selectedAction === action
-                  ? 'text-black'
-                  : 'text-white'
-                  }`}
+                className="font-normal transition-colors whitespace-nowrap"
                 style={{
                   fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                   fontWeight: 400,
@@ -1164,10 +1256,7 @@ const UserTransaction: React.FC = () => {
               <button
                 key={action}
                 onClick={() => setSelectedCryptoAction(action)}
-                className={`font-normal transition-colors whitespace-nowrap ${selectedCryptoAction === action
-                  ? 'text-black'
-                  : 'text-white'
-                  }`}
+                className="font-normal transition-colors whitespace-nowrap"
                 style={{
                   fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                   fontWeight: 400,
@@ -1687,7 +1776,14 @@ const UserTransaction: React.FC = () => {
           <div style={{ width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', overflow: 'hidden' }}>
             {/* Table Header */}
             <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
-              <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'auto' }}>
+              <table
+                className="w-full"
+                style={{
+                  height: '60px',
+                  width: '100%',
+                  tableLayout: selectedAction === 'Convert' ? 'fixed' : 'auto'
+                }}
+              >
                 <thead>
                   <tr style={{ height: '60px', width: '100%' }}>
                     <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '24px', paddingRight: '12px' }}>
@@ -1745,7 +1841,7 @@ const UserTransaction: React.FC = () => {
                         verticalAlign: 'middle',
                         backgroundColor: '#1C2530',
                         paddingLeft: '0px',
-                        paddingRight: '40px'
+                        paddingRight: selectedAction === 'Convert' ? '20px' : '40px'
                       }}
                     >
                       Transaction id
@@ -1761,7 +1857,7 @@ const UserTransaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '42px'
+                            paddingRight: '24px'
                           }}
                         >
                           Amount Sent
@@ -1775,7 +1871,7 @@ const UserTransaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '42px'
+                            paddingRight: '24px'
                           }}
                         >
                           Received
@@ -1789,7 +1885,7 @@ const UserTransaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '2px'
+                            paddingRight: '16px'
                           }}
                         >
                           Status
@@ -1802,8 +1898,8 @@ const UserTransaction: React.FC = () => {
                             fontWeight: 400,
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
-                            paddingLeft: '50px',
-                            paddingRight: '42px'
+                            paddingLeft: '0px',
+                            paddingRight: '24px'
                           }}
                         >
                           Rate
@@ -1817,7 +1913,7 @@ const UserTransaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '82px'
+                            paddingRight: '24px'
                           }}
                         >
                           Conversion
@@ -1927,7 +2023,7 @@ const UserTransaction: React.FC = () => {
                         verticalAlign: 'middle',
                         backgroundColor: '#1C2530',
                         paddingLeft: '0px',
-                        paddingRight: '62px'
+                        paddingRight: selectedAction === 'Convert' ? '24px' : '62px'
                       }}
                     >
                       Date
@@ -1940,8 +2036,8 @@ const UserTransaction: React.FC = () => {
                         fontWeight: 400,
                         verticalAlign: 'middle',
                         backgroundColor: '#1C2530',
-                        paddingLeft: '60px',
-                        paddingRight: '32px'
+                        paddingLeft: selectedAction === 'Convert' ? '0px' : '60px',
+                        paddingRight: selectedAction === 'Convert' ? '24px' : '32px'
                       }}
                     >
                       Action
@@ -1953,7 +2049,13 @@ const UserTransaction: React.FC = () => {
 
             {/* Table Body */}
             <div style={{ backgroundColor: '#0F1825', width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
-              <table className="w-full" style={{ width: '100%', tableLayout: 'auto' }}>
+              <table
+                className="w-full"
+                style={{
+                  width: '100%',
+                  tableLayout: selectedAction === 'Convert' ? 'fixed' : 'auto'
+                }}
+              >
                 <tbody>
                   {transactions.map((transaction, index) => (
                     <tr
@@ -2016,7 +2118,7 @@ const UserTransaction: React.FC = () => {
                           color: '#D1D5DB',
                           verticalAlign: 'middle',
                           paddingLeft: '0px',
-                          paddingRight: selectedAction === 'Convert' ? '30px' : '42px'
+                          paddingRight: selectedAction === 'Convert' ? '20px' : '42px'
                         }}
                       >
                         {transaction.id}
@@ -2031,8 +2133,8 @@ const UserTransaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '70px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).amountSent || transaction.amount}
@@ -2045,13 +2147,13 @@ const UserTransaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '60px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).received || '-'}
                           </td>
-                          <td className="py-3" style={{ verticalAlign: 'middle', paddingLeft: '30px', paddingRight: '32px' }}>
+                          <td className="py-3" style={{ verticalAlign: 'middle', paddingLeft: '0px', paddingRight: '24px' }}>
                             <div className="flex items-center">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: transaction.status === 'success' ? '#008000' : transaction.status === 'failed' ? '#FF0000' : '#FFD700' }}></span>
                             </div>
@@ -2064,8 +2166,8 @@ const UserTransaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '30px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).rate || '-'}
@@ -2078,8 +2180,8 @@ const UserTransaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '20px',
-                              paddingRight: '122px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).conversion || '-'}
@@ -2210,12 +2312,19 @@ const UserTransaction: React.FC = () => {
                           color: '#D1D5DB',
                           verticalAlign: 'middle',
                           paddingLeft: '0px',
-                          paddingRight: '62px'
+                          paddingRight: selectedAction === 'Convert' ? '24px' : '62px'
                         }}
                       >
                         {transaction.date}
                       </td>
-                      <td className="py-3" style={{ verticalAlign: 'middle', paddingLeft: '0px', paddingRight: '24px' }}>
+                      <td
+                        className="py-3"
+                        style={{
+                          verticalAlign: 'middle',
+                          paddingLeft: '0px',
+                          paddingRight: selectedAction === 'Convert' ? '16px' : '24px'
+                        }}
+                      >
                         <button
                           onClick={() => {
                             setSelectedTransaction(transaction);

@@ -5,14 +5,18 @@ import './App.css'
 // Importing all pages
 import Dashboard from "./pages/dashboard/Dashboard";
 import Setting from "./pages/setting/Setting";
+import AdminProfile from "./pages/setting/AdminProfile";
 import Support from "./pages/support/Support";
 
 import Transaction from "./pages/transaction/Transaction";
 import KYC from "./pages/kyc/KYC";
 import WalletManagement from "./pages/walletManagement/WalletManagement";
-import Ads from "./pages/ads/Ads";
+import Rates from "./pages/rates/Rates";
+import P2P from "./pages/p2p/P2P";
+import ChatAppeals from "./pages/chatAppeals/ChatAppeals";
+import MasterWallet from "./pages/masterWallet/MasterWallet";
+import Rewards from "./pages/rewards/Rewards";
 import Analytics from "./pages/analytics/Analytics";
-import SocialManagement from "./pages/social/SocialManagement";
 import ConnectManagement from "./pages/connect/ConnectManagement";
 import MarketManagement from "./pages/market/MarketManagement";
 import GymManagement from "./pages/gym/GymManagement";
@@ -32,8 +36,6 @@ import UserManagementSocial from "./pages/userManegement_dropDown_portion/UserMa
 import UserManagementConnect from "./pages/userManegement_dropDown_portion/UserManagement_Connect/UserManagementConnect";
 import UserManagementMarket from "./pages/userManegement_dropDown_portion/UserManagement_Market/UserManagementMarket";
 import UserManagementGym from "./pages/userManegement_dropDown_portion/UserManagement_Gym/UserManagementGym";
-import AdminManagement from "./pages/setting/admin/AdminManagement";
-import AdminProfile from "./pages/setting/admin/AdminProfile";
 import Login from "./auth/Login";
 import AuthenticatorSetup from "./auth/AuthenticatorSetup";
 import AuthenticatorCode from "./auth/AuthenticatorCode";
@@ -73,17 +75,19 @@ const App: React.FC = () => {
           <Route path="transaction" element={<Transaction />} />
           <Route path="kyc" element={<KYC />} />
           <Route path="wallet-management" element={<WalletManagement />} />
-          <Route path="ads" element={<Ads />} />
-          <Route path="social" element={<SocialManagement />} />
+          <Route path="rates" element={<Rates />} />
+          <Route path="p2p" element={<P2P />} />
+          <Route path="chat-appeals" element={<ChatAppeals />} />
+          <Route path="master-wallet" element={<MasterWallet />} />
+          <Route path="rewards" element={<Rewards />} />
+          <Route path="analytics" element={<Analytics />} />
           <Route path="connect" element={<ConnectManagement />} />
           <Route path="market" element={<MarketManagement />} />
           <Route path="gym" element={<GymManagement />} />
-          <Route path="analytics" element={<Analytics />} />
           <Route path="support" element={<Support />} />
           <Route path="notification" element={<Notification />} />
           <Route path="settings" element={<Setting />} />
-          <Route path="settings/admin/management" element={<AdminManagement />} />
-          <Route path="settings/admin/management/:username" element={<AdminProfile />} />
+          <Route path="settings/admin/:adminId" element={<AdminProfile />} />
         </Route>
       </Routes>
     </Router>

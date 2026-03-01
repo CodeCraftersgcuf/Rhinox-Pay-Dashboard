@@ -35,42 +35,43 @@ export const Sidebar_links = [
   },
 
   {
-    name: 'Ads Managment',
-    link: '/ads',
-    icon: images.bitcoin_wallet,
+    name: 'Rates',
+    link: '/rates',
+    icon: images.rates_icon,
     sublinks: [],
   },
 
   {
-    name: 'Social Managment',
-    link: '/social',
+    name: 'Peer to Peer (P2P)',
+    link: '/p2p',
     icon: images.user_group,
     sublinks: [],
   },
 
   {
-    name: 'Connect Managment',
-    link: '/connect',
-    icon: images.user_group_icon,
+    name: 'Chat Appeals',
+    link: '/chat-appeals',
+    icon: images.bubble_chat,
     sublinks: [],
   },
 
   {
-    name: 'Market Managment',
-    link: '/market',
-    icon: images.rates_icon,
+    name: 'Master Wallet',
+    link: '/master-wallet',
+    icon: images.wallet_icon,
     sublinks: [],
   },
+
   {
-    name: 'Gym Paddy Managment',
-    link: '/gym',
-    icon: images.user_icon,
-    sublinks: [],
-  },
-  {
-    name: 'Analytics & Report',
+    name: 'Analytics',
     link: '/analytics',
     icon: images.analytics_up,
+    sublinks: [],
+  },
+  {
+    name: 'Rewards',
+    link: '/rewards',
+    icon: images.gift_icon,
     sublinks: [],
   },
   {

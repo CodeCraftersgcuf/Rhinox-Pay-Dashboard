@@ -1090,10 +1090,7 @@ const Transaction: React.FC = () => {
               <button
                 key={action}
                 onClick={() => setSelectedAction(action)}
-                className={`font-normal transition-colors whitespace-nowrap ${selectedAction === action
-                  ? 'text-black'
-                  : 'text-white'
-                  }`}
+                className="font-normal transition-colors whitespace-nowrap"
                 style={{
                   fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                   fontWeight: 400,
@@ -1144,10 +1141,7 @@ const Transaction: React.FC = () => {
               <button
                 key={action}
                 onClick={() => setSelectedCryptoAction(action)}
-                className={`font-normal transition-colors whitespace-nowrap ${selectedCryptoAction === action
-                  ? 'text-black'
-                  : 'text-white'
-                  }`}
+                className="font-normal transition-colors whitespace-nowrap"
                 style={{
                   fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                   fontWeight: 400,
@@ -1814,7 +1808,14 @@ const Transaction: React.FC = () => {
           <div style={{ width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', overflow: 'hidden' }}>
             {/* Table Header */}
             <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
-              <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'auto' }}>
+              <table
+                className="w-full"
+                style={{
+                  height: '60px',
+                  width: '100%',
+                  tableLayout: selectedAction === 'Convert' ? 'fixed' : 'auto'
+                }}
+              >
                 <thead>
                   <tr style={{ height: '60px', width: '100%' }}>
                     <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '24px', paddingRight: '12px' }}>
@@ -1888,7 +1889,7 @@ const Transaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '42px'
+                            paddingRight: '24px'
                           }}
                         >
                           Amount Sent
@@ -1902,7 +1903,7 @@ const Transaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '42px'
+                            paddingRight: '24px'
                           }}
                         >
                           Received
@@ -1916,7 +1917,7 @@ const Transaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '2px'
+                            paddingRight: '16px'
                           }}
                         >
                           Status
@@ -1929,8 +1930,8 @@ const Transaction: React.FC = () => {
                             fontWeight: 400,
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
-                            paddingLeft: '50px',
-                            paddingRight: '42px'
+                            paddingLeft: '0px',
+                            paddingRight: '24px'
                           }}
                         >
                           Rate
@@ -1944,7 +1945,7 @@ const Transaction: React.FC = () => {
                             verticalAlign: 'middle',
                             backgroundColor: '#1C2530',
                             paddingLeft: '0px',
-                            paddingRight: '82px'
+                            paddingRight: '24px'
                           }}
                         >
                           Conversion
@@ -2118,7 +2119,7 @@ const Transaction: React.FC = () => {
                           verticalAlign: 'middle',
                           backgroundColor: '#1C2530',
                           paddingLeft: '0px',
-                          paddingRight: '62px'
+                          paddingRight: selectedAction === 'Convert' ? '24px' : '62px'
                         }}
                       >
                         Date
@@ -2132,8 +2133,8 @@ const Transaction: React.FC = () => {
                         fontWeight: 400,
                         verticalAlign: 'middle',
                         backgroundColor: '#1C2530',
-                        paddingLeft: '60px',
-                        paddingRight: '32px'
+                        paddingLeft: selectedAction === 'Convert' ? '0px' : '60px',
+                        paddingRight: selectedAction === 'Convert' ? '24px' : '32px'
                       }}
                     >
                       Action
@@ -2145,7 +2146,13 @@ const Transaction: React.FC = () => {
 
             {/* Table Body */}
             <div style={{ backgroundColor: '#0F1825', width: '100%' }}>
-              <table className="w-full" style={{ width: '100%', tableLayout: 'auto' }}>
+              <table
+                className="w-full"
+                style={{
+                  width: '100%',
+                  tableLayout: selectedAction === 'Convert' ? 'fixed' : 'auto'
+                }}
+              >
                 <tbody>
                   {transactions.map((transaction, index) => (
                     <tr
@@ -2208,7 +2215,7 @@ const Transaction: React.FC = () => {
                           color: '#D1D5DB',
                           verticalAlign: 'middle',
                           paddingLeft: selectedAction === 'All' ? '0px' : '0px',
-                          paddingRight: selectedAction === 'All' ? '45px' : (selectedAction === 'Convert' ? '30px' : '42px')
+                          paddingRight: selectedAction === 'All' ? '45px' : (selectedAction === 'Convert' ? '20px' : '42px')
                         }}
                       >
                         {selectedAction === 'All' ? (
@@ -2250,8 +2257,8 @@ const Transaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '70px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).amountSent || transaction.amount}
@@ -2264,13 +2271,13 @@ const Transaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '60px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).received || '-'}
                           </td>
-                          <td className="py-3" style={{ verticalAlign: 'middle', paddingLeft: '30px', paddingRight: '32px' }}>
+                          <td className="py-3" style={{ verticalAlign: 'middle', paddingLeft: '0px', paddingRight: '24px' }}>
                             <div className="flex items-center">
                               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: transaction.status === 'success' ? '#008000' : transaction.status === 'failed' ? '#FF0000' : '#FFD700' }}></span>
                             </div>
@@ -2283,8 +2290,8 @@ const Transaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '30px',
-                              paddingRight: '42px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).rate || '-'}
@@ -2297,8 +2304,8 @@ const Transaction: React.FC = () => {
                               fontWeight: 400,
                               color: '#D1D5DB',
                               verticalAlign: 'middle',
-                              paddingLeft: '20px',
-                              paddingRight: '122px'
+                              paddingLeft: '0px',
+                              paddingRight: '24px'
                             }}
                           >
                             {(transaction as any).conversion || '-'}
@@ -2505,7 +2512,7 @@ const Transaction: React.FC = () => {
                             color: '#D1D5DB',
                             verticalAlign: 'middle',
                             paddingLeft: '0px',
-                            paddingRight: '62px'
+                            paddingRight: selectedAction === 'Convert' ? '24px' : '62px'
                           }}
                         >
                           {transaction.date}
@@ -2513,8 +2520,8 @@ const Transaction: React.FC = () => {
                       )}
                       <td className="py-3" style={{ 
                         verticalAlign: 'middle', 
-                        paddingLeft: selectedAction === 'All' ? '60px' : '0px', 
-                        paddingRight: selectedAction === 'All' ? '32px' : '24px',
+                        paddingLeft: selectedAction === 'All' ? '60px' : (selectedAction === 'Convert' ? '0px' : '0px'), 
+                        paddingRight: selectedAction === 'All' ? '32px' : (selectedAction === 'Convert' ? '16px' : '24px'),
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontSize: '12px',
                         fontWeight: 400,

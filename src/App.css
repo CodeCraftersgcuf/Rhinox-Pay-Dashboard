@@ -24,6 +24,15 @@
   border-radius: 10px;
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 .bg-theme-dark {
   background-color: #FF0000;
 }

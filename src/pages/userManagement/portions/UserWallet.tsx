@@ -638,8 +638,8 @@ const UserWallet: React.FC = () => {
         }}
       >
         {/* Page Title and Time Filter */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between mb-6 gap-4">
+          <div className="min-w-0">
             <h1
               style={{
                 fontFamily: 'Agbalumo',
@@ -649,7 +649,7 @@ const UserWallet: React.FC = () => {
                 lineHeight: '100%',
                 letterSpacing: '0%'
               }}
-              className="text-white mb-2"
+              className="text-white mb-2 break-words"
             >
               User Wallet - {username ? decodeURIComponent(username) : 'User'}
             </h1>
@@ -663,8 +663,8 @@ const UserWallet: React.FC = () => {
               color: '#757E81'
             }}>View manage my user wallet details</p>
           </div>
-          <div className="flex flex-col">
-            <div className="flex gap-[10px] mb-[15px] mt-2 flex-wrap md:flex-nowrap">
+          <div className="w-full lg:w-auto flex flex-col lg:items-end">
+            <div className="flex gap-[10px] mb-[15px] mt-2 flex-wrap lg:flex-nowrap lg:justify-end">
               {timeRanges.map((range) => (
                 <button
                   key={range}
@@ -2181,7 +2181,12 @@ const UserWallet: React.FC = () => {
         <div style={{ width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', overflow: 'hidden' }}>
           {/* Table Header */}
           <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
-            <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'auto' }}>
+            <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '56px' }} />
+                <col />
+                <col style={{ width: '220px' }} />
+              </colgroup>
               <thead>
                 <tr style={{ height: '100%', width: '100%' }}>
                   <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '24px', paddingRight: '12px' }}>
@@ -2232,20 +2237,20 @@ const UserWallet: React.FC = () => {
                       verticalAlign: 'middle',
                       backgroundColor: '#1C2530',
                       paddingLeft: '0px',
-                      paddingRight: '500px',
+                      paddingRight: '24px',
                     }}
                   >
                     Activity
                   </th>
                   <th
-                    className="text-right py-3 text-white"
+                    className="text-left py-3 text-white"
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                       fontSize: '12px',
                       fontWeight: 400,
                       verticalAlign: 'middle',
                       backgroundColor: '#1C2530',
-                      paddingRight: '350px',
+                      paddingLeft: '24px',
                       whiteSpace: 'nowrap',
                       width: '1%'
                     }}
@@ -2259,7 +2264,12 @@ const UserWallet: React.FC = () => {
 
           {/* Table Body */}
           <div style={{ backgroundColor: '#0F1825', width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
-            <table className="w-full" style={{ width: '100%', tableLayout: 'auto' }}>
+            <table className="w-full" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '56px' }} />
+                <col />
+                <col style={{ width: '220px' }} />
+              </colgroup>
               <tbody>
                 {walletActivities.map((activity) => (
                   <tr
@@ -2313,18 +2323,19 @@ const UserWallet: React.FC = () => {
                         fontSize: '14px',
                         fontWeight: 400,
                         paddingLeft: '0px',
-                        paddingRight: '370px'
+                        paddingRight: '24px',
+                        whiteSpace: 'nowrap'
                       }}
                     >
                       {activity.activity}
                     </td>
                     <td
-                      className="py-3 text-gray-300 text-right"
+                      className="py-3 text-gray-300 text-left"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        paddingRight: '250px',
+                        paddingLeft: '24px',
                         color: '#9CA3AF',
                         whiteSpace: 'nowrap',
                         width: '1%'

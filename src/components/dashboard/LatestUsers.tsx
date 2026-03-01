@@ -172,8 +172,9 @@ const LatestUsers: React.FC = () => {
     >
       {/* Header Section */}
       <div
-        className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 pb-4 gap-4"
+        className="flex items-center justify-between px-6"
         style={{
+          height: '60px',
           backgroundColor: '#020B16',
           borderTopLeftRadius: '20px',
           borderTopRightRadius: '20px'
@@ -192,7 +193,7 @@ const LatestUsers: React.FC = () => {
         >
           Latest Users
         </h2>
-        <div className="relative w-full md:w-auto">
+        <div className="relative">
           <div
             className="flex items-center px-3 py-2"
             style={{
@@ -229,10 +230,20 @@ const LatestUsers: React.FC = () => {
       <div style={{ width: '100%' }}>
         {/* Table Header */}
         <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
-          <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'auto' }}>
+          <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
             <thead>
               <tr style={{ height: '100%', width: '100%' }}>
-                <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '24px', paddingRight: '12px' }}>
+                <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '12px', paddingRight: '8px' }}>
                   <div className="relative inline-block" style={{ width: '16px', height: '16px' }}>
                     <input
                       type="checkbox"
@@ -279,7 +290,7 @@ const LatestUsers: React.FC = () => {
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
                     paddingLeft: '0px',
-                    paddingRight: '24px'
+                    paddingRight: '8px'
                   }}
                 >
                   User Name
@@ -292,8 +303,8 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '65px',
-                    paddingRight: '24px'
+                    paddingLeft: '8px',
+                    paddingRight: '8px'
                   }}
                 >
                   Email
@@ -306,8 +317,8 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '130px',
-                    paddingRight: '24px'
+                    paddingLeft: '8px',
+                    paddingRight: '8px'
                   }}
                 >
                   Phone No
@@ -320,8 +331,8 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '24px',
-                    paddingRight: '24px'
+                    paddingLeft: '8px',
+                    paddingRight: '8px'
                   }}
                 >
                   Wallet Balance
@@ -334,7 +345,7 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingRight: '34px'
+                    paddingRight: '8px'
                   }}
                 >
                   Kyc Status
@@ -347,8 +358,8 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '24px',
-                    paddingRight: '24px'
+                    paddingLeft: '8px',
+                    paddingRight: '8px'
                   }}
                 >
                   Actions
@@ -361,7 +372,8 @@ const LatestUsers: React.FC = () => {
                     fontWeight: 400,
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '64px',
+                    paddingLeft: '6px',
+                    paddingRight: '6px',
                   }}
                 >
                   Other
@@ -373,7 +385,17 @@ const LatestUsers: React.FC = () => {
 
         {/* Table Body */}
         <div style={{ backgroundColor: '#0F1825', width: '100%' }}>
-          <table className="w-full" style={{ width: '100%', tableLayout: 'auto' }}>
+          <table className="w-full" style={{ width: '100%', tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '15%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '11%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '21%' }} />
+              <col style={{ width: '6%' }} />
+            </colgroup>
             <tbody>
               {displayedUsers.map((user) => (
                 <tr
@@ -381,7 +403,7 @@ const LatestUsers: React.FC = () => {
                   className="border-b border-[#2B363E] hover:bg-[#1A252F] transition-colors"
                   style={{ width: '100%', display: 'table-row' }}
                 >
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '12px' }}>
+                  <td className="py-3" style={{ paddingLeft: '12px', paddingRight: '8px' }}>
                     <div className="relative inline-block" style={{ width: '16px', height: '16px' }}>
                       <input
                         type="checkbox"
@@ -419,20 +441,20 @@ const LatestUsers: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '0px', paddingRight: '24px' }}>
+                  <td className="py-3" style={{ paddingLeft: '0px', paddingRight: '8px' }}>
                     <div className="flex items-center gap-3">
                       <img
                         src={images.avater1}
                         alt={user.name}
                         className="rounded-full object-cover"
                         style={{
-                          width: '40px',
-                          height: '40px',
+                          width: '34px',
+                          height: '34px',
                           backgroundColor: '#A9EF45'
                         }}
                       />
                       <span
-                        className="text-white"
+                        className="text-white leading-tight"
                         style={{
                           fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                           fontWeight: 274,
@@ -446,9 +468,9 @@ const LatestUsers: React.FC = () => {
                       </span>
                     </div>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
-                    <span
-                      className="text-gray-300"
+                  <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+                      <span
+                      className="block truncate whitespace-nowrap text-gray-300"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontWeight: 274,
@@ -462,53 +484,53 @@ const LatestUsers: React.FC = () => {
                       {user.email}
                     </span>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
+                  <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
                     <span
-                      className="text-gray-300"
+                      className="whitespace-nowrap text-gray-300"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontWeight: 274,
                         fontStyle: 'normal',
                         fontSize: '12px',
                         lineHeight: '100%',
-                        paddingRight: '60px',
+                        paddingRight: '0px',
                         letterSpacing: '0%'
                       }}
                     >
                       {user.phone}
                     </span>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
+                  <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
                     <span
-                      className="text-white"
+                      className="whitespace-nowrap text-white"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontWeight: 274,
                         fontStyle: 'normal',
                         fontSize: '12px',
                         lineHeight: '100%',
-                        paddingRight: '44px',
+                        paddingRight: '0px',
                         letterSpacing: '0%'
                       }}
                     >
                       {user.walletBalance}
                     </span>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
+                  <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
                     <div className="rounded-full" style={{
                       width: '17px',
                       height: '17px',
                       backgroundColor: user.kycStatus === "verified" ? "#008000" : "#FF0000"
                     }}></div>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
-                    <div className="flex items-center gap-2">
+                  <td className="py-3" style={{ paddingLeft: '6px', paddingRight: '6px' }}>
+                    <div className="flex items-center gap-1">
                       <button
                         onClick={() => navigate(`/user/management/profile/${user.id}`)}
-                        className="text-xs font-medium"
+                        className="text-[9px] font-medium"
                         style={{
-                          width: '97px',
-                          height: '35px',
+                          width: '74px',
+                          height: '30px',
                           borderRadius: '100px',
                           backgroundColor: "#A9EF45",
                           color: 'black',
@@ -520,10 +542,10 @@ const LatestUsers: React.FC = () => {
                       </button>
                       <button
                         onClick={() => navigate(`/user/management/${user.id}/transactions`)}
-                        className="text-white text-xs font-medium"
+                        className="text-white text-[9px] font-medium"
                         style={{
-                          width: '97px',
-                          height: '35px',
+                          width: '74px',
+                          height: '30px',
                           borderRadius: '100px',
                           backgroundColor: "#000000",
                           color: 'white',
@@ -535,13 +557,13 @@ const LatestUsers: React.FC = () => {
                       </button>
                     </div>
                   </td>
-                  <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px' }}>
+                  <td className="py-3" style={{ paddingLeft: '6px', paddingRight: '6px' }}>
                     <div className="relative">
                       <button
                         ref={(el) => { buttonRefs.current[user.id] = el; }}
                         onClick={() => handleDropdownToggle(user.id)}
-                        className="text-gray-400 hover:text-white p-1"
-                        style={{ paddingRight: '' }}
+                        className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-[12px] border text-gray-400 hover:text-white"
+                        style={{ borderWidth: '0.3px', borderColor: '#2B363E' }}
                       >
                         <svg
                           className="w-5 h-5"

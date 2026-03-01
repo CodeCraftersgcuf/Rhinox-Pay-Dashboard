@@ -116,13 +116,11 @@ const Analytics: React.FC<AnalyticsProps> = ({ selectedTimeRange = "All Time" })
         `}
       </style>
       <div
+        className="w-full min-w-0 h-[258px]"
         style={{
-          width: '620px',
-          height: '258px',
           borderRadius: '20px',
           borderWidth: '0.3px',
           borderStyle: 'solid',
-          marginLeft: '10px',
           borderColor: '#A9EF45',
           backgroundColor: '#0C1C21',
           overflow: 'hidden'

@@ -226,12 +226,14 @@ const UserProfile: React.FC = () => {
       <div
         style={{
           background: 'linear-gradient(to right, #0B1C20, #0A1520)',
-          height: '505px',
+          minHeight: '505px',
+          height: 'auto',
           borderRadius: '15px',
           padding: '24px',
           boxSizing: 'border-box',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}
       >
         {/* Page Header */}
@@ -312,10 +314,10 @@ const UserProfile: React.FC = () => {
         </div>
 
         {/* User Information Content */}
-        <div className="flex flex-col lg:flex-row gap-6 flex-1">
+        <div className="flex min-w-0 flex-col gap-6 md:flex-row flex-1">
           {/* Left Column - User Profile Card */}
           <div
-            className="rounded-lg p-4 md:p-6 relative overflow-hidden w-full lg:w-[354px]"
+            className="rounded-lg p-4 md:p-6 relative overflow-hidden w-full md:w-[300px]"
             style={{
               background: 'linear-gradient(to right, #4880C0, #1B589E)',
               borderRadius: '15px',
@@ -476,7 +478,7 @@ const UserProfile: React.FC = () => {
           </div>
 
           {/* Right Column */}
-          <div className="flex-1 flex flex-col gap-4">
+          <div className="flex-1 min-w-0 flex flex-col gap-4">
             {/* User Details Card */}
             <div
               className="rounded-lg"
@@ -582,7 +584,8 @@ const UserProfile: React.FC = () => {
                 <div
                   style={{
                     padding: '16px',
-                    borderRight: '1px solid rgba(255, 255, 255, 0.1)'
+                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
+                    minWidth: 0
                   }}
                 >
                   <p
@@ -597,11 +600,13 @@ const UserProfile: React.FC = () => {
                     Email:
                   </p>
                   <p
-                    className="text-white"
+                    className="text-white break-words"
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontSize: '14px',
-                      fontWeight: 400
+                      fontSize: '13px',
+                      fontWeight: 400,
+                      lineHeight: '120%',
+                      overflowWrap: 'anywhere'
                     }}
                   >
                     {user.email}
@@ -667,13 +672,13 @@ const UserProfile: React.FC = () => {
             </div>
 
             {/* Registration Cards */}
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {/* General Registration Card (Left) */}
               <div
                 className="rounded-lg p-4 relative"
                 style={{
                   backgroundColor: '#121B27',
-                  width: '354px',
+                  width: '100%',
                   height: '162px',
                   borderRadius: '20px',
                   borderWidth: '0.31px',
@@ -687,8 +692,8 @@ const UserProfile: React.FC = () => {
                     className="text-white"
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontWeight: 510,
-                      fontSize: '16px'
+                      fontWeight: 500,
+                      fontSize: '14px'
                     }}
                   >
                     General Registration
@@ -697,12 +702,12 @@ const UserProfile: React.FC = () => {
                     onClick={() => setShowEditProfileModal(true)}
                     className="text-black"
                     style={{
-                      width: '80px',
-                      height: '28px',
+                      width: '72px',
+                      height: '24px',
                       borderRadius: '100px',
                       backgroundColor: '#A9EF45',
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontSize: '11px',
+                      fontSize: '10px',
                       fontWeight: 500,
                       cursor: 'pointer',
                       display: 'flex',
@@ -720,11 +725,11 @@ const UserProfile: React.FC = () => {
                     borderRadius: '100px',
                     border: '1px solid #065E0E',
                     backgroundColor: '#102623',
-                    padding: '4px 8px',
+                    padding: '2px 7px',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '6px',
+                    gap: '5px',
                     marginBottom: '8px',
                     marginTop: '-6px'
                   }}
@@ -732,8 +737,8 @@ const UserProfile: React.FC = () => {
                   <div
                     className="rounded-full flex items-center justify-center"
                     style={{
-                      width: '12px',
-                      height: '12px',
+                      width: '10px',
+                      height: '10px',
                       backgroundColor: '#065E0E'
                     }}
                   >
@@ -756,7 +761,7 @@ const UserProfile: React.FC = () => {
                   <span
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontSize: '12px',
+                      fontSize: '10px',
                       fontWeight: 400,
                       color: '#065E0E'
                     }}
@@ -917,7 +922,7 @@ const UserProfile: React.FC = () => {
                 className="rounded-lg p-4 relative"
                 style={{
                   backgroundColor: '#121B27',
-                  width: '354px',
+                  width: '100%',
                   height: '162px',
                   borderRadius: '20px',
                   borderWidth: '0.31px',
@@ -931,8 +936,8 @@ const UserProfile: React.FC = () => {
                     className="text-white"
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontWeight: 510,
-                      fontSize: '16px'
+                      fontWeight: 500,
+                      fontSize: '14px'
                     }}
                   >
                     General Registration
@@ -941,12 +946,12 @@ const UserProfile: React.FC = () => {
                     onClick={() => setShowKYCDetailsModal(true)}
                     className="text-black"
                     style={{
-                      width: '80px',
-                      height: '28px',
+                      width: '72px',
+                      height: '24px',
                       borderRadius: '100px',
                       backgroundColor: '#A9EF45',
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                      fontSize: '11px',
+                      fontSize: '10px',
                       fontWeight: 400,
                       cursor: 'pointer',
                       display: 'flex',
@@ -964,24 +969,24 @@ const UserProfile: React.FC = () => {
                       borderRadius: '100px',
                       border: '1px solid #FFA500',
                       backgroundColor: '#292A23',
-                      padding: '4px 10px',
+                      padding: '2px 8px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '5px'
                     }}
                   >
                     <img
                       src={images.vector5}
                       alt="pending"
                       style={{
-                        width: '10px',
-                        height: '10px'
+                        width: '8px',
+                        height: '8px'
                       }}
                     />
                     <span
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                        fontSize: '12px',
+                        fontSize: '10px',
                         fontWeight: 400,
                         color: '#FFA500'
                       }}
@@ -1231,7 +1236,12 @@ const UserProfile: React.FC = () => {
         <div style={{ width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px', overflow: 'hidden' }}>
           {/* Table Header */}
           <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
-            <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'auto' }}>
+            <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '62%' }} />
+                <col style={{ width: '32%' }} />
+              </colgroup>
               <thead>
                 <tr style={{ height: '100%', width: '100%' }}>
                   <th className="text-left py-3" style={{ verticalAlign: 'middle', backgroundColor: '#1C2530', paddingLeft: '24px', paddingRight: '12px' }}>
@@ -1282,22 +1292,22 @@ const UserProfile: React.FC = () => {
                       verticalAlign: 'middle',
                       backgroundColor: '#1C2530',
                       paddingLeft: '0px',
-                      paddingRight: '500px',
+                      paddingRight: '24px',
                     }}
                   >
                     Activity
                   </th>
                   <th
-                    className="text-right py-3 text-white"
+                    className="text-left py-3 text-white"
                     style={{
                       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                       fontSize: '12px',
                       fontWeight: 400,
                       verticalAlign: 'middle',
                       backgroundColor: '#1C2530',
-                      paddingRight: '350px',
+                      paddingRight: '24px',
                       whiteSpace: 'nowrap',
-                      width: '1%'
+                      paddingLeft: '0px'
                     }}
                   >
                     Date
@@ -1309,7 +1319,12 @@ const UserProfile: React.FC = () => {
 
           {/* Table Body */}
           <div style={{ backgroundColor: '#0F1825', width: '100%', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
-            <table className="w-full" style={{ width: '100%', tableLayout: 'auto' }}>
+            <table className="w-full" style={{ width: '100%', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '62%' }} />
+                <col style={{ width: '32%' }} />
+              </colgroup>
               <tbody>
                 {activities.map((activity) => (
                   <tr
@@ -1363,21 +1378,21 @@ const UserProfile: React.FC = () => {
                         fontSize: '14px',
                         fontWeight: 400,
                         paddingLeft: '0px',
-                        paddingRight: '370px'
+                        paddingRight: '24px'
                       }}
                     >
                       {activity.activity}
                     </td>
                     <td
-                      className="py-3 text-gray-300 text-right"
+                      className="py-3 text-gray-300 text-left"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                         fontSize: '14px',
                         fontWeight: 400,
-                        paddingRight: '250px',
+                        paddingRight: '24px',
                         color: '#9CA3AF',
                         whiteSpace: 'nowrap',
-                        width: '1%'
+                        paddingLeft: '0px'
                       }}
                     >
                       {activity.date}

@@ -177,13 +177,13 @@ const KYC: React.FC = () => {
   const getKYCButtonStyle = (status: string) => {
     const isVerified = status.toLowerCase() === 'verified' || status.toLowerCase() === 'approved';
     return {
-      width: '97px',
-      height: '35px',
+      width: '88px',
+      height: '31px',
       borderRadius: '100px',
       backgroundColor: isVerified ? '#008000' : '#A9EF45',
       color: isVerified ? '#FFFFFF' : '#000000',
       fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-      fontSize: '12px',
+      fontSize: '10px',
       fontWeight: 400,
       cursor: 'pointer',
       border: 'none'
@@ -271,9 +271,9 @@ const KYC: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Total Users Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -310,9 +310,9 @@ const KYC: React.FC = () => {
 
             {/* Completed KYC Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -349,9 +349,9 @@ const KYC: React.FC = () => {
 
             {/* Uncompleted KYC Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -642,7 +642,8 @@ const KYC: React.FC = () => {
             <div
               className="flex items-center px-3 py-2"
               style={{
-                width: '267px',
+                width: '100%',
+                maxWidth: '267px',
                 height: '35px',
                 borderRadius: '100px',
                 backgroundColor: '#0F1722'
@@ -677,13 +678,13 @@ const KYC: React.FC = () => {
           <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
             <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '50px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '250px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '21%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '16%' }} />
               </colgroup>
               <thead>
                 <tr style={{ height: '100%', width: '100%' }}>
@@ -733,7 +734,7 @@ const KYC: React.FC = () => {
                       fontWeight: 400,
                       verticalAlign: 'middle',
                       backgroundColor: '#1C2530',
-                      paddingLeft: '0px',
+                      paddingLeft: '8px',
                       paddingRight: '24px'
                     }}
                   >
@@ -818,13 +819,13 @@ const KYC: React.FC = () => {
           <div style={{ backgroundColor: '#0F1825', width: '100%' }}>
             <table className="w-full" style={{ width: '100%', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '50px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '250px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '21%' }} />
+                <col style={{ width: '22%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '9%' }} />
+                <col style={{ width: '16%' }} />
               </colgroup>
               <tbody>
                 {displayedUsers.length > 0 ? (
@@ -872,15 +873,15 @@ const KYC: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="py-3" style={{ paddingLeft: '0px', paddingRight: '24px', verticalAlign: 'middle' }}>
+                      <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '24px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-3">
                           <img
                             src={images.avater1}
                             alt={user.name}
                             className="rounded-full object-cover"
                             style={{
-                              width: '40px',
-                              height: '40px',
+                              width: '34px',
+                              height: '34px',
                               backgroundColor: '#A9EF45'
                             }}
                           />
@@ -891,6 +892,7 @@ const KYC: React.FC = () => {
                               fontWeight: 274,
                               fontStyle: 'normal',
                               fontSize: '12px',
+                              whiteSpace: 'nowrap',
                               lineHeight: '100%',
                               letterSpacing: '0%'
                             }}

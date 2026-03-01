@@ -58,9 +58,17 @@ const images = {
   image_26: '/src/assets/images/image-26.png',
   image_27: '/src/assets/images/image-27.png',
   ChatCircle: '/src/assets/images/ChatCircle.png',
+  bubble_chat: '/src/assets/images/bubble-chat.png',
   Seal2: '/src/assets/images/Seal2.png',
   Seal3: '/src/assets/images/Seal3.png',
   image34: '/src/assets/images/image%2034.png',
+  ArrowsCounterClockwise: '/src/assets/images/ArrowsCounterClockwise.png',
+  Rectangle_202: '/src/assets/images/Rectangle-202.png',
+  Vector1: '/src/assets/images/Vector(1).png',
+  Wallet_icon: '/src/assets/images/Wallet.png',
+  Subtitles: '/src/assets/images/Subtitles.png',
+  Subtitles2: '/src/assets/images/Subtitles(1).png',
+  ChatCircledark: '/src/assets/images/ChatCircle(1).png',
 };
 
 export default images;

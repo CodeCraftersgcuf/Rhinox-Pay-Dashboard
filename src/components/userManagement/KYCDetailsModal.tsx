@@ -151,17 +151,24 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) =>
         backgroundColor: "rgba(0, 0, 0, 0.5)",
         backdropFilter: "blur(4px)",
         WebkitBackdropFilter: "blur(4px)",
-        zIndex: 101
+        zIndex: 101,
+        padding: "12px"
       }}
     >
       <div
         ref={modalRef}
-        className="h-full overflow-y-auto flex flex-col"
+        className="hide-scrollbar flex flex-col"
         style={{
           width: "100%",
-          maxWidth: "500px",
+          maxWidth: "390px",
           backgroundColor: "#020C19",
-          boxShadow: "-4px 0 20px rgba(0, 0, 0, 0.3)"
+          boxShadow: "-4px 0 20px rgba(0, 0, 0, 0.3)",
+          borderRadius: "20px",
+          height: "calc(100vh - 24px)",
+          maxHeight: "calc(100vh - 24px)",
+          overflowY: "auto",
+          msOverflowStyle: "none",
+          scrollbarWidth: "none"
         }}
       >
         {/* Header */}

@@ -221,9 +221,9 @@ const WalletManagement: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Total Wallets Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -260,9 +260,9 @@ const WalletManagement: React.FC = () => {
 
             {/* Crypto Wallet Balance Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -299,9 +299,9 @@ const WalletManagement: React.FC = () => {
 
             {/* Fiat Wallet Balance Card */}
             <div
-              className="rounded-lg overflow-hidden"
+              className="rounded-lg overflow-hidden w-full"
               style={{
-                width: '354px',
+                maxWidth: '354px',
                 height: '90px',
                 borderRadius: '10px',
                 background: 'linear-gradient(to right, #4880C0, #1B589E)'
@@ -506,7 +506,8 @@ const WalletManagement: React.FC = () => {
             <div
               className="flex items-center px-3 py-2"
               style={{
-                width: '267px',
+                width: '100%',
+                maxWidth: '267px',
                 height: '35px',
                 borderRadius: '100px',
                 backgroundColor: '#0F1722'
@@ -547,19 +548,22 @@ const WalletManagement: React.FC = () => {
       >
         {/* Header Section */}
         <div
-          className="flex flex-col md:flex-row justify-between items-start md:items-center p-6 pb-4 gap-4"
+          className="flex items-center justify-between"
           style={{
             backgroundColor: '#020B16',
             borderTopLeftRadius: '20px',
-            borderTopRightRadius: '20px'
+            borderTopRightRadius: '20px',
+            height: '60px',
+            paddingLeft: '32px',
+            paddingRight: '32px'
           }}
         >
           <h2
             style={{
               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-              fontWeight: 274,
+              fontWeight: 500,
               fontStyle: 'normal',
-              fontSize: '20px',
+              fontSize: '16px',
               lineHeight: '100%',
               letterSpacing: '0%'
             }}
@@ -575,14 +579,14 @@ const WalletManagement: React.FC = () => {
           <div style={{ backgroundColor: '#1C2530', width: '100%' }}>
             <table className="w-full" style={{ height: '60px', width: '100%', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '50px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '19%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '13%' }} />
               </colgroup>
               <thead>
                 <tr style={{ height: '100%', width: '100%' }}>
@@ -633,8 +637,8 @@ const WalletManagement: React.FC = () => {
                     letterSpacing: '0%',
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '24px',
-                    paddingRight: '24px'
+                    paddingLeft: '12px',
+                    paddingRight: '16px'
                   }}>
                     User Name
                   </th>
@@ -717,8 +721,8 @@ const WalletManagement: React.FC = () => {
                     letterSpacing: '0%',
                     verticalAlign: 'middle',
                     backgroundColor: '#1C2530',
-                    paddingLeft: '24px',
-                    paddingRight: '24px'
+                    paddingLeft: '30px',
+                    paddingRight: '12px'
                   }}>
                     Actions
                   </th>
@@ -731,14 +735,14 @@ const WalletManagement: React.FC = () => {
           <div style={{ backgroundColor: '#0F1825', width: '100%' }}>
             <table className="w-full" style={{ width: '100%', tableLayout: 'fixed' }}>
               <colgroup>
-                <col style={{ width: '50px' }} />
-                <col style={{ width: '200px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '150px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '100px' }} />
-                <col style={{ width: '150px' }} />
+                <col style={{ width: '5%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '19%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '13%' }} />
               </colgroup>
               <tbody>
                 {displayedUsers.length > 0 ? (
@@ -786,15 +790,15 @@ const WalletManagement: React.FC = () => {
                           )}
                         </div>
                       </td>
-                      <td className="py-3" style={{ paddingLeft: '0px', paddingRight: '24px', verticalAlign: 'middle' }}>
+                      <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '16px', verticalAlign: 'middle' }}>
                         <div className="flex items-center gap-3">
                           <img
                             src={images.avater1}
                             alt={user.name}
                             className="object-cover"
                             style={{
-                              width: '40px',
-                              height: '40px',
+                              width: '34px',
+                              height: '34px',
                               borderRadius: '200px',
                               backgroundColor: '#A9EF45',
                               opacity: 1
@@ -807,6 +811,7 @@ const WalletManagement: React.FC = () => {
                               fontWeight: 274,
                               fontStyle: 'normal',
                               fontSize: '12px',
+                              whiteSpace: 'nowrap',
                               lineHeight: '100%',
                               letterSpacing: '0%'
                             }}
@@ -901,17 +906,17 @@ const WalletManagement: React.FC = () => {
                           {user.txCrypto}
                         </span>
                       </td>
-                      <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px', verticalAlign: 'middle' }}>
+                      <td className="py-3" style={{ paddingLeft: '12px', paddingRight: '12px', verticalAlign: 'middle' }}>
                         <button
                           onClick={() => navigate(`/user/management/${encodeURIComponent(user.name || user.email)}/wallet`)}
                           style={{
-                            width: '97px',
-                            height: '35px',
+                            width: '88px',
+                            height: '31px',
                             borderRadius: '100px',
                             backgroundColor: '#A9EF45',
                             color: '#000000',
                             fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
-                            fontSize: '12px',
+                            fontSize: '10px',
                             fontWeight: 400,
                             cursor: 'pointer',
                             border: 'none'

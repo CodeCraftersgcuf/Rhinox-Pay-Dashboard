@@ -13,7 +13,7 @@ const Profile: React.FC<ProfileProps> = ({ name = "Admin", img }) => {
         src={img || images.profile_image} 
         alt="profile" 
         className="rounded-full object-cover" 
-        style={{ width: '53px', height: '53px' }}
+        style={{ width: '50px', height: '50px' }}
       />
       <h2 className="text-white text-lg" style={{ fontWeight: 400 }}>Hey Admin</h2>
     </div>

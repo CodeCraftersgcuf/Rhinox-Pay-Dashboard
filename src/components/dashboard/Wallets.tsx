@@ -112,7 +112,7 @@ const Wallets: React.FC<WalletsProps> = ({ selectedTimeRange = "All Time" }) => 
   }, [isCurrencyDropdownOpen]);
 
   return (
-    <div className="w-[469px] h-[258px] rounded-[20px] border bg-[#0C1C21] flex flex-col overflow-hidden" style={{ borderColor: '#2A62A3' }}>
+    <div className="w-full min-w-0 h-[258px] rounded-[20px] border bg-[#0C1C21] flex flex-col overflow-hidden" style={{ borderColor: '#2A62A3' }}>
       {/* Section 1: Header Section */}
       <div className="h-[50px] border-b border-gray-700 bg-[#19252E] flex items-center justify-between px-5">
         {/* Left: Icon and Title */}

@@ -30,14 +30,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setMobileOpen }) => {
                 `}
             </style>
             <div
-                className={`h-screen flex flex-col transition-all duration-300 ${menuOpen ? "w-[80px]" : "w-[300px]"} text-white`}
+                className={`h-screen flex flex-col transition-all duration-300 ${menuOpen ? "w-[80px]" : "w-[280px]"} text-white`}
                 style={{ 
                     background: 'linear-gradient(180deg, #020C19 0%, #00200A 100%)'
                 }}
             >
             {/* Sidebar Header - Fixed */}
             <div 
-                className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 h-[72px] flex-shrink-0"
+                className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 h-[70px] flex-shrink-0"
                 style={{ backgroundColor: '#020B16', borderBottom: '1px solid #252B31' }}
             >
                 {/* Mobile Close Button */}
@@ -84,9 +84,14 @@ const Sidebar: React.FC<SidebarProps> = ({ setMobileOpen }) => {
                     </ul>
                 </nav>
 
+                {/* Divider Line */}
+                <div className="mt-4 mb-2">
+                    <div className="h-[0.5px] bg-[rgba(156,163,175,0.3)]"></div>
+                </div>
+
                 {/* Logout Button */}
-                <div className="p-4 mt-4 flex items-center justify-center">
-                    <button className="flex items-center justify-center p-2 gap-2 text-white font-medium rounded-lg w-full hover:bg-white/10 transition-colors">
+                <div className="p-4 pl-6 flex items-center justify-start">
+                    <button className="flex items-center justify-start p-2 gap-2 text-white font-medium rounded-lg w-full hover:bg-white/10 transition-colors">
                         <img src={images.logout_icon} alt="Logout" className="w-5 h-5" />
                         {!menuOpen && <span>Logout</span>}
                     </button>

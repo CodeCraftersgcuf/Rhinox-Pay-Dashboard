@@ -112,43 +112,39 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
 
   return (
     <div
-      className="fixed inset-0 flex items-start justify-end"
+      className="fixed inset-0 z-[110] flex items-start justify-end p-3 md:p-4"
       style={{
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
-        backdropFilter: "blur(4px)",
-        WebkitBackdropFilter: "blur(4px)",
-        zIndex: 101
+        backgroundColor: "rgba(12, 29, 51, 0.7)",
+        backdropFilter: "blur(2px)",
+        WebkitBackdropFilter: "blur(2px)",
       }}
     >
       <div
         ref={modalRef}
-        className="h-full overflow-y-auto flex flex-col"
+        className="h-[calc(100vh-24px)] w-full max-w-[390px] overflow-hidden rounded-2xl border border-[#132635] bg-[#020B16] shadow-2xl md:h-[calc(100vh-32px)]"
         style={{
-          width: "100%",
-          maxWidth: "500px",
-          backgroundColor: "#020C19",
           boxShadow: "-4px 0 20px rgba(0, 0, 0, 0.3)"
         }}
       >
+        <div className="flex h-full flex-col">
         {/* Header */}
         <div
-          className="flex items-center justify-between p-6"
+          className="flex items-center justify-between border-b border-[rgba(255,255,255,0.08)] px-4"
           style={{
-            borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
-            height: "70px"
+            height: "54px"
           }}
         >
           <h2
             className="text-white"
             style={{
               fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: "20px",
-              fontWeight: 500,
+              fontSize: "14px",
+              fontWeight: 400,
               lineHeight: "100%",
               letterSpacing: "0%"
             }}
           >
-            Edit Profile
+            Add New User
           </h2>
           <button
             onClick={onClose}
@@ -191,15 +187,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
             }
           `}
         </style>
-        <form onSubmit={handleSubmit} className="p-6 flex-1">
+        <form onSubmit={handleSubmit} className="hide-scrollbar flex-1 overflow-y-auto p-4">
           {/* Avatar Section */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-5">
             <div className="relative">
               <div
                 className="rounded-full flex items-center justify-center"
                 style={{
-                  width: "120px",
-                  height: "120px",
+                  width: "96px",
+                  height: "96px",
                   backgroundColor: "#2762A7",
                   overflow: "hidden"
                 }}
@@ -218,8 +214,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
               <div
                 className="absolute rounded-full flex items-center justify-center"
                 style={{
-                  width: "32px",
-                  height: "32px",
+                  width: "20px",
+                  height: "20px",
                   backgroundColor: "#D9D9D9",
                   bottom: "0",
                   right: "0",
@@ -230,8 +226,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                   src={images.edit_icon}
                   alt="Edit"
                   style={{
-                    width: "30px",
-                    height: "30px"
+                    width: "14px",
+                    height: "14px"
                   }}
                 />
               </div>
@@ -239,14 +235,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
           </div>
 
           {/* Form Fields */}
-          <div className="space-y-4">
+          <div className="space-y-3.5">
             {/* Country */}
             <div>
               <label
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -258,14 +254,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                   onClick={() => setShowCountryDropdown(!showCountryDropdown)}
                   className="w-full flex items-center justify-between"
                   style={{
-                    height: "48px",
+                    height: "38px",
                     borderRadius: "8px",
                     border: "none",
                     backgroundColor: "#0F1825",
                     paddingLeft: "16px",
                     paddingRight: "16px",
                     fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: "14px",
+                    fontSize: "11px",
                     fontWeight: 400,
                     outline: "none",
                     cursor: "pointer",
@@ -273,18 +269,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                     textAlign: "left"
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     {selectedCountry ? (
                       <>
                         <img
                           src={selectedCountry.flag}
                           alt={selectedCountry.name}
-                          style={{
-                            width: "24px",
-                            height: "18px",
-                            objectFit: "cover",
-                            borderRadius: "2px"
-                          }}
+                          style={{ width: "18px", height: "14px", objectFit: "cover", borderRadius: "2px" }}
                         />
                         <span>
                           {selectedCountry.name} ({selectedCountry.code})
@@ -317,7 +308,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                     className="absolute z-50 mt-1 overflow-hidden"
                     style={{
                       width: "100%",
-                      height: "350px",
+                      height: "280px",
                       backgroundColor: "#020C19",
                       borderRadius: "20px",
                       boxShadow: "0 4px 12px rgba(0, 0, 0, 0.3)",
@@ -337,7 +328,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                         className="flex items-center gap-3 transition-colors"
                         style={{
                           fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                          fontSize: "14px",
+                          fontSize: "11px",
                           fontWeight: 400,
                           color: "#FFFFFF",
                           textAlign: "left",
@@ -368,8 +359,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                           src={country.flag}
                           alt={country.name}
                           style={{
-                            width: "24px",
-                            height: "18px",
+                            width: "18px",
+                            height: "14px",
                             objectFit: "cover",
                             borderRadius: "2px"
                           }}
@@ -390,7 +381,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -404,14 +395,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 placeholder="Enter first name"
                 className="w-full text-white"
                 style={{
-                  height: "48px",
+                  height: "38px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backgroundColor: "#0F1825",
                   paddingLeft: "16px",
                   paddingRight: "16px",
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "11px",
                   fontWeight: 400,
                   outline: "none"
                 }}
@@ -424,7 +415,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -438,14 +429,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 placeholder="Enter last name"
                 className="w-full text-white"
                 style={{
-                  height: "48px",
+                  height: "38px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backgroundColor: "#0F1825",
                   paddingLeft: "16px",
                   paddingRight: "16px",
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "11px",
                   fontWeight: 400,
                   outline: "none"
                 }}
@@ -458,7 +449,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -472,14 +463,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 placeholder="Enter email address"
                 className="w-full text-white"
                 style={{
-                  height: "48px",
+                  height: "38px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backgroundColor: "#0F1825",
                   paddingLeft: "16px",
                   paddingRight: "16px",
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "11px",
                   fontWeight: 400,
                   outline: "none"
                 }}
@@ -492,7 +483,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -506,14 +497,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 placeholder="Enter phone number"
                 className="w-full text-white"
                 style={{
-                  height: "48px",
+                  height: "38px",
                   borderRadius: "8px",
                   border: "none",
-                  backgroundColor: "rgba(255, 255, 255, 0.05)",
+                  backgroundColor: "#0F1825",
                   paddingLeft: "16px",
                   paddingRight: "16px",
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "11px",
                   fontWeight: 400,
                   outline: "none"
                 }}
@@ -526,7 +517,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                 className="block text-white mb-2"
                 style={{
                   fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontSize: "14px",
+                  fontSize: "12px",
                   fontWeight: 400
                 }}
               >
@@ -541,14 +532,14 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                   placeholder="Enter password"
                   className="w-full text-white"
                   style={{
-                    height: "48px",
+                    height: "38px",
                     borderRadius: "8px",
                     border: "none",
                     backgroundColor: "#0F1825",
                     paddingLeft: "16px",
                     paddingRight: "48px",
                     fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-                    fontSize: "14px",
+                    fontSize: "11px",
                     fontWeight: 400,
                     outline: "none"
                   }}
@@ -567,8 +558,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
                   }}
                 >
                   <svg
-                    width="20"
-                    height="20"
+                    width="16"
+                    height="16"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -596,22 +587,23 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
           {/* Submit Button */}
           <button
             type="submit"
-            className="text-black flex items-center justify-center mt-8"
+            className="text-black flex items-center justify-center mt-4"
             style={{
-              width: "174px",
-              height: "60px",
+              width: "93px",
+              height: "34px",
               borderRadius: "100px",
               backgroundColor: "#A9EF45",
               fontFamily: "SF Pro, -apple-system, BlinkMacSystemFont, sans-serif",
-              fontSize: "14px",
-              fontWeight: 400,
+              fontSize: "10px",
+              fontWeight: 500,
               border: "none",
               cursor: "pointer"
             }}
           >
-            Update Profile
+            Add User
           </button>
         </form>
+        </div>
       </div>
     </div>
   );
