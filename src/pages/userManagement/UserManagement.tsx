@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import UserMetricCards from "../../components/userManagement/UserMetricCards";
 import UserManagementTopBar from "../../components/userManagement/UserManagementTopBar";
 import UserManagementTable from "../../components/userManagement/UserManagementTable";
 import AddNewUserModal from "../../components/userManagement/AddNewUserModal";
+import { fetchUsers, bulkUpdateUsers } from "../../services/admin";
+import { formatNumber } from "../../utils/adminFormatters";
 
 const UserManagement: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
@@ -11,43 +13,50 @@ const UserManagement: React.FC = () => {
   const [showKycDropdown, setShowKycDropdown] = useState(false);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [tableRefreshKey, setTableRefreshKey] = useState(0);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
 
-  const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
-
-  // Mock data based on time range
-  const userData: Record<string, {
-    totalUsers: string;
-    newUsers: string;
-    activeUsers: string;
-  }> = {
-    "All Time": {
-      totalUsers: "50,000",
-      newUsers: "200",
-      activeUsers: "120"
-    },
-    "7 Days": {
-      totalUsers: "12,500",
-      newUsers: "50",
-      activeUsers: "30"
-    },
-    "1 month": {
-      totalUsers: "35,000",
-      newUsers: "140",
-      activeUsers: "85"
-    },
-    "1 Year": {
-      totalUsers: "150,000",
-      newUsers: "600",
-      activeUsers: "360"
-    },
-    "Custom": {
-      totalUsers: "25,000",
-      newUsers: "100",
-      activeUsers: "60"
+  const handleBulkUserAction = async (action: "activate" | "deactivate") => {
+    const ids = [...selectedUserIds].map(Number).filter((id) => !Number.isNaN(id));
+    if (!ids.length) return;
+    try {
+      await bulkUpdateUsers(ids, action);
+      setSelectedUserIds(new Set());
+      setTableRefreshKey((k) => k + 1);
+    } catch (error) {
+      console.error(`Failed to ${action} users:`, error);
     }
   };
 
-  const currentData = userData[selectedTimeRange] || userData["All Time"];
+  const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
+  const [stats, setStats] = useState({ totalUsers: 0, newUsers: 0, activeUsers: 0 });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      setLoadingStats(true);
+      try {
+        const data = await fetchUsers({ page: 1, limit: 1, range: selectedTimeRange });
+        const apiStats = data?.stats || {};
+        setStats({
+          totalUsers: apiStats.total || 0,
+          newUsers: data?.pagination?.total || 0,
+          activeUsers: apiStats.verified || 0,
+        });
+      } catch (error) {
+        console.error("Failed to load user stats:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    loadStats();
+  }, [selectedTimeRange]);
+
+  const currentData = {
+    totalUsers: loadingStats ? "..." : formatNumber(stats.totalUsers),
+    newUsers: loadingStats ? "..." : formatNumber(stats.newUsers),
+    activeUsers: loadingStats ? "..." : formatNumber(stats.activeUsers),
+  };
 
   return (
     <div>
@@ -140,19 +149,27 @@ const UserManagement: React.FC = () => {
         showBulkActionDropdown={showBulkActionDropdown}
         setShowBulkActionDropdown={setShowBulkActionDropdown}
         onAddUserClick={() => setShowAddUserModal(true)}
+        selectedCount={selectedUserIds.size}
+        onBulkActivate={() => handleBulkUserAction("activate")}
+        onBulkDeactivate={() => handleBulkUserAction("deactivate")}
       />
 
       {/* Latest Users Table Section */}
       <UserManagementTable
+        key={tableRefreshKey}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         kycFilter={kycFilter}
+        selectedTimeRange={selectedTimeRange}
+        onSelectionChange={setSelectedUserIds}
+        onUsersChanged={() => setTableRefreshKey((k) => k + 1)}
       />
 
       {/* Add New User Modal */}
       <AddNewUserModal
         isOpen={showAddUserModal}
         onClose={() => setShowAddUserModal(false)}
+        onSuccess={() => setTableRefreshKey((k) => k + 1)}
       />
     </div>
   );

@@ -1,10 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, X } from "lucide-react";
+import { mapCountryCode } from "../../utils/adminFormatters";
 
 interface SendNotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSend?: (payload: {
+    title: string;
+    message: string;
+    countries?: string[];
+    userSegment?: string;
+  }) => Promise<void>;
 }
 
 const inputClass =
@@ -13,10 +20,14 @@ const inputClass =
 const SendNotificationModal: React.FC<SendNotificationModalProps> = ({
   isOpen,
   onClose,
+  onSend,
 }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const [country, setCountry] = useState("Select country");
   const [users, setUsers] = useState("Select Users");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showUsersDropdown, setShowUsersDropdown] = useState(false);
 
@@ -72,9 +83,32 @@ const SendNotificationModal: React.FC<SendNotificationModalProps> = ({
 
         <form
           className="space-y-3 p-4"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            onClose();
+            if (!onSend || !subject.trim() || !message.trim()) {
+              onClose();
+              return;
+            }
+            setSubmitting(true);
+            try {
+              const countries =
+                country !== "Select country"
+                  ? [mapCountryCode(country) || country].filter(Boolean) as string[]
+                  : undefined;
+              await onSend({
+                title: subject.trim(),
+                message: message.trim(),
+                countries,
+                userSegment: users !== "Select Users" ? users : undefined,
+              });
+              setSubject("");
+              setMessage("");
+              onClose();
+            } catch (error) {
+              console.error("Failed to send notification:", error);
+            } finally {
+              setSubmitting(false);
+            }
           }}
         >
           <div>
@@ -173,7 +207,12 @@ const SendNotificationModal: React.FC<SendNotificationModalProps> = ({
 
           <div>
             <label className="mb-2 block text-xs text-white">Subject</label>
-            <input className={inputClass} placeholder="Input Subject" />
+            <input
+              className={inputClass}
+              placeholder="Input Subject"
+              value={subject}
+              onChange={(event) => setSubject(event.target.value)}
+            />
           </div>
 
           <div>
@@ -181,6 +220,8 @@ const SendNotificationModal: React.FC<SendNotificationModalProps> = ({
             <textarea
               className="h-[88px] w-full rounded-lg border border-transparent bg-[#0F1825] px-4 py-3 text-xs text-white outline-none placeholder:text-[#878C92] focus:border-[#2A3D4D]"
               placeholder="Type Message"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
             />
           </div>
 
@@ -191,9 +232,10 @@ const SendNotificationModal: React.FC<SendNotificationModalProps> = ({
 
           <button
             type="submit"
-            className="mt-4 flex h-[38px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-xs font-medium text-[#0C141C]"
+            disabled={submitting}
+            className="mt-4 flex h-[38px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-xs font-medium text-[#0C141C] disabled:opacity-60"
           >
-            Proceed
+            {submitting ? "Sending..." : "Proceed"}
           </button>
         </form>
       </div>

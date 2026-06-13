@@ -1,66 +1,58 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import images from "../../constants/images";
 import Analytics from "../../components/dashboard/Analytics";
 import Wallets from "../../components/dashboard/Wallets";
 import LatestUsers from "../../components/dashboard/LatestUsers";
+import { fetchDashboardStats } from "../../services/admin";
+import { formatCurrency, formatGrowth, formatNumber } from "../../utils/adminFormatters";
 
 const Dashboard: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalTransactions: 0,
+    totalRevenue: 0,
+    fiatRevenue: 0,
+    cryptoRevenue: 0,
+    userGrowth: 0,
+  });
+  const [loading, setLoading] = useState(true);
 
   const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-  // Mock data based on time range
-  const dashboardData: Record<string, {
-    totalUsers: string;
-    totalTransactions: string;
-    totalRevenue: string;
-    fiatRevenue: string;
-    cryptoRevenue: string;
-    userGrowth: string;
-  }> = {
-    "All Time": {
-      totalUsers: "50,000",
-      totalTransactions: "350",
-      totalRevenue: "$30,050",
-      fiatRevenue: "$30,000",
-      cryptoRevenue: "$30,000",
-      userGrowth: "+50K"
-    },
-    "7 Days": {
-      totalUsers: "12,500",
-      totalTransactions: "87",
-      totalRevenue: "$7,512",
-      fiatRevenue: "$7,500",
-      cryptoRevenue: "$7,500",
-      userGrowth: "+12K"
-    },
-    "1 month": {
-      totalUsers: "35,000",
-      totalTransactions: "245",
-      totalRevenue: "$21,035",
-      fiatRevenue: "$21,000",
-      cryptoRevenue: "$21,000",
-      userGrowth: "+35K"
-    },
-    "1 Year": {
-      totalUsers: "150,000",
-      totalTransactions: "1,050",
-      totalRevenue: "$90,150",
-      fiatRevenue: "$90,000",
-      cryptoRevenue: "$90,000",
-      userGrowth: "+150K"
-    },
-    "Custom": {
-      totalUsers: "25,000",
-      totalTransactions: "175",
-      totalRevenue: "$15,025",
-      fiatRevenue: "$15,000",
-      cryptoRevenue: "$15,000",
-      userGrowth: "+25K"
-    }
-  };
+  useEffect(() => {
+    const loadStats = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchDashboardStats(selectedTimeRange);
+        setStats({
+          totalUsers: data?.totalUsers || 0,
+          totalTransactions: data?.totalTransactions || 0,
+          totalRevenue: data?.totalRevenue || 0,
+          fiatRevenue: data?.fiatRevenue || 0,
+          cryptoRevenue: data?.cryptoRevenue || 0,
+          userGrowth: data?.userGrowth || 0,
+        });
+      } catch (error) {
+        console.error("Failed to load dashboard stats:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStats();
+  }, [selectedTimeRange]);
 
-  const currentData = dashboardData[selectedTimeRange] || dashboardData["All Time"];
+  const currentData = useMemo(
+    () => ({
+      totalUsers: loading ? "..." : formatNumber(stats.totalUsers),
+      totalTransactions: loading ? "..." : formatNumber(stats.totalTransactions),
+      totalRevenue: loading ? "..." : formatCurrency(stats.totalRevenue),
+      fiatRevenue: loading ? "..." : formatCurrency(stats.fiatRevenue),
+      cryptoRevenue: loading ? "..." : formatCurrency(stats.cryptoRevenue),
+      userGrowth: loading ? "..." : formatGrowth(stats.userGrowth),
+    }),
+    [loading, stats]
+  );
 
   return (
     <div>
@@ -186,7 +178,6 @@ const Dashboard: React.FC = () => {
 
           {/* Total Transactions Card */}
           <div className="rounded-lg overflow-hidden">
-            {/* First Section */}
             <div
               className="p-6"
               style={{ background: 'linear-gradient(119.08deg, #48C048 0%, #1B9E43 96.9%)' }}
@@ -218,7 +209,6 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            {/* Second Section */}
             <div
               className="p-6 rounded-b-lg flex items-center"
               style={{ background: 'linear-gradient(135deg, #4EBC58 0%, #35AA56 100%)', height: '75px' }}
@@ -242,7 +232,6 @@ const Dashboard: React.FC = () => {
 
           {/* Total Revenue Card */}
           <div className="rounded-lg overflow-hidden">
-            {/* First Section */}
             <div className="bg-white p-6">
               <div className="flex items-start justify-between">
                 <div>
@@ -273,7 +262,6 @@ const Dashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-            {/* Second Section */}
             <div className="p-6 rounded-b-lg" style={{ height: '75px', backgroundColor: '#E5E5E5' }}>
               <div className="flex items-center h-full">
                 <div className="flex-1">
@@ -297,7 +285,6 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Analytics and Wallets Section */}
       <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg p-4 lg:grid-cols-12" style={{ backgroundColor: '#0A1420' }}>
         <div className="lg:col-span-7 min-w-0">
           <Analytics selectedTimeRange={selectedTimeRange} />
@@ -307,12 +294,9 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Latest Users Section */}
       <LatestUsers />
     </div>
   );
 };
 
 export default Dashboard;
-
-

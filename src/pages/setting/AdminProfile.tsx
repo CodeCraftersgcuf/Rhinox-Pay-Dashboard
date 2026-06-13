@@ -1,28 +1,54 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, Pencil, Trash2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
+import { fetchStaffActivity } from "../../services/admin";
+import { formatDateTime } from "../../utils/adminFormatters";
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-const activityRows = [
-  { id: "1", activity: "Account Created", date: "22/10/25 - 07:22 AM" },
-  { id: "2", activity: "Admin logged into account", date: "22/10/25 - 07:22 AM" },
-];
+interface ActivityRow {
+  id: string;
+  activity: string;
+  date: string;
+}
 
 const AdminProfile: React.FC = () => {
   const { adminId } = useParams();
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
   const [searchText, setSearchText] = useState("");
+  const [activities, setActivities] = useState<ActivityRow[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const filteredActivities = useMemo(
-    () =>
-      activityRows.filter((row) =>
-        row.activity.toLowerCase().includes(searchText.toLowerCase().trim())
-      ),
-    [searchText]
-  );
+  useEffect(() => {
+    if (!adminId) return;
+
+    const loadActivity = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchStaffActivity(adminId, {
+          range: selectedTimeRange,
+          search: searchText,
+          limit: 50,
+        });
+        setActivities(
+          (data?.items || []).map((item: Record<string, unknown>) => ({
+            id: String(item.id),
+            activity: String(item.activity || "-"),
+            date: formatDateTime(item.date as string),
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load admin activity:", error);
+        setActivities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadActivity();
+  }, [adminId, selectedTimeRange, searchText]);
 
   return (
     <div className="space-y-5">
@@ -178,24 +204,36 @@ const AdminProfile: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredActivities.map((row) => (
-                <tr key={row.id} className="border-b border-[#2B363E] text-[12px] text-white">
-                  <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 appearance-none rounded-[3px] border border-[#9CA8B3] bg-transparent align-middle checked:border-[#A9EF45] checked:bg-[#A9EF45]"
-                    />
+              {loading ? (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-xs text-[#7F8B95]">
+                    Loading activity...
                   </td>
-                  <td className="px-4 py-3 text-[#CFD7DD]">{row.activity}</td>
-                  <td className="px-4 py-3 text-[#CFD7DD]">{row.date}</td>
                 </tr>
-              ))}
+              ) : activities.length > 0 ? (
+                activities.map((row) => (
+                  <tr key={row.id} className="border-b border-[#2B363E] text-[12px] text-white">
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 appearance-none rounded-[3px] border border-[#9CA8B3] bg-transparent align-middle checked:border-[#A9EF45] checked:bg-[#A9EF45]"
+                      />
+                    </td>
+                    <td className="px-4 py-3 text-[#CFD7DD]">{row.activity}</td>
+                    <td className="px-4 py-3 text-[#CFD7DD]">{row.date}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={3} className="px-4 py-8 text-center text-xs text-[#7F8B95]">
+                    {adminId ? "No activity found." : "Admin ID is required."}
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </section>
-
-      <p className="hidden">{adminId}</p>
     </div>
   );
 };

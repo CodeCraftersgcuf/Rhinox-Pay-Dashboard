@@ -1,95 +1,61 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SupportChatModal from "../../components/support/SupportChatModal";
 import ChatAppealsHeroSection from "../../components/chatAppeals/ChatAppealsHeroSection";
 import ChatAppealsFilterStrip from "../../components/chatAppeals/ChatAppealsFilterStrip";
 import ChatAppealsTable from "../../components/chatAppeals/ChatAppealsTable";
 import { AppealRow, AppealStatusOption } from "../../components/chatAppeals/types";
+import { fetchP2PAppeals } from "../../services/admin";
+import { formatDateTime, formatNumber, mapCountryCode, mapCountryName } from "../../utils/adminFormatters";
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
+const ITEMS_PER_PAGE = 10;
 
-const rows: AppealRow[] = [
-  {
-    id: "1",
-    username: "Qamardeen Malik",
-    vendor: "Lawal Adewale",
-    adType: "Buy ad",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    statusColor: "red",
-    statusText: "Won by Vendor",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "2",
-    username: "Qamardeen Malik",
-    vendor: "Lawal Adewale",
-    adType: "Sell Ads",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    statusColor: "yellow",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "3",
-    username: "Qamardeen Malik",
-    vendor: "Lawal Adewale",
-    adType: "Buy ad",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    statusColor: "green",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "4",
-    username: "Qamardeen Malik",
-    vendor: "Lawal Adewale",
-    adType: "Sell Ads",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    statusColor: "yellow",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "5",
-    username: "Qamardeen Malik",
-    vendor: "Lawal Adewale",
-    adType: "Buy ad",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    statusColor: "yellow",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-];
-
-const rowsByTimeRange: Record<string, AppealRow[]> = {
-  "All Time": rows,
-  "7 Days": rows.slice(0, 3),
-  "1 month": rows.slice(0, 4),
-  "1 Year": rows,
-  Custom: rows.slice(1, 4),
+const splitDateTime = (value: string) => {
+  const formatted = formatDateTime(value);
+  const [date, time] = formatted.split(", ");
+  return { date: date || "-", time: time || "-" };
 };
 
-const statsByTimeRange: Record<string, { totalChats: number; appealed: number; resolved: number }> = {
-  "All Time": { totalChats: 250, appealed: 150, resolved: 100 },
-  "7 Days": { totalChats: 72, appealed: 41, resolved: 24 },
-  "1 month": { totalChats: 138, appealed: 85, resolved: 54 },
-  "1 Year": { totalChats: 250, appealed: 150, resolved: 100 },
-  Custom: { totalChats: 96, appealed: 58, resolved: 36 },
+const mapAppealStatus = (status: string): { color: AppealRow["statusColor"]; text?: string } => {
+  if (status === "refunded" || status === "completed") {
+    return { color: "green", text: "Resolved" };
+  }
+  if (status === "cancelled") {
+    return { color: "red", text: "Won by Vendor" };
+  }
+  return { color: "yellow", text: "Appealed" };
+};
+
+const mapAppealRow = (appeal: {
+  id: number | string;
+  username: string;
+  vendor: string;
+  adType: string;
+  token: string;
+  country?: string | null;
+  qty: number;
+  amount: number;
+  status: string;
+  date: string;
+}): AppealRow => {
+  const { date, time } = splitDateTime(appeal.date);
+  const status = mapAppealStatus(appeal.status);
+  const adTypeLabel =
+    appeal.adType?.toLowerCase() === "sell" ? "Sell Ads" : "Buy ad";
+  return {
+    id: String(appeal.id),
+    username: appeal.username,
+    vendor: appeal.vendor,
+    adType: adTypeLabel,
+    token: appeal.token,
+    country: mapCountryName(appeal.country),
+    qty: formatNumber(appeal.qty),
+    amount: `$${formatNumber(appeal.amount)}`,
+    statusColor: status.color,
+    statusText: status.text,
+    date,
+    time,
+  };
 };
 
 const ChatAppeals: React.FC = () => {
@@ -105,6 +71,11 @@ const ChatAppeals: React.FC = () => {
   const [showWonByDropdown, setShowWonByDropdown] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [activeChatUser, setActiveChatUser] = useState<AppealRow | null>(null);
+  const [rows, setRows] = useState<AppealRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loadingRows, setLoadingRows] = useState(false);
+  const [activeStats, setActiveStats] = useState({ totalChats: 0, appealed: 0, resolved: 0 });
 
   const buyRef = useRef<HTMLDivElement | null>(null);
   const countryRef = useRef<HTMLDivElement | null>(null);
@@ -134,28 +105,59 @@ const ChatAppeals: React.FC = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [selectedTimeRange]);
+    setCurrentPage(1);
+  }, [selectedTimeRange, selectedBuyFilter, selectedCountry, selectedStatus, selectedWonBy, searchText]);
 
-  const activeRows = rowsByTimeRange[selectedTimeRange] ?? rows;
-  const activeStats = statsByTimeRange[selectedTimeRange] ?? statsByTimeRange["All Time"];
+  const loadAppeals = useCallback(async () => {
+    setLoadingRows(true);
+    try {
+      const data = await fetchP2PAppeals({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        range: selectedTimeRange,
+        country: mapCountryCode(selectedCountry),
+        search: searchText.trim() || undefined,
+      });
+      const mappedRows = (data?.items || []).map(mapAppealRow);
+      setRows(mappedRows);
+      const total = data?.pagination?.total || 0;
+      setTotalItems(total);
+      setActiveStats({
+        totalChats: total,
+        appealed: total,
+        resolved: mappedRows.filter((row: { statusColor: string }) => row.statusColor === "green").length,
+      });
+    } catch (error) {
+      console.error("Failed to load P2P appeals:", error);
+      setRows([]);
+      setTotalItems(0);
+      setActiveStats({ totalChats: 0, appealed: 0, resolved: 0 });
+    } finally {
+      setLoadingRows(false);
+    }
+  }, [currentPage, selectedTimeRange, selectedCountry, searchText]);
+
+  useEffect(() => {
+    loadAppeals();
+  }, [loadAppeals]);
 
   const filteredRows = useMemo(
     () =>
-      activeRows.filter(
+      rows.filter(
         (row) =>
-          row.username.toLowerCase().includes(searchText.toLowerCase().trim()) &&
           (selectedBuyFilter === "Buy" ||
             selectedBuyFilter === "All Ad type" ||
             row.adType === selectedBuyFilter) &&
-          (selectedCountry === "Country" || row.country === selectedCountry) &&
           (selectedStatus === "All Status" ||
-            (selectedStatus === "Appealed" && row.statusColor === "red") ||
+            (selectedStatus === "Appealed" && (row.statusColor === "yellow" || row.statusColor === "red")) ||
             (selectedStatus === "Pending" && row.statusColor === "yellow") ||
             (selectedStatus === "Resolved" && row.statusColor === "green")) &&
           (selectedWonBy === "Won by" || row.statusText?.toLowerCase().includes(selectedWonBy.toLowerCase()))
       ),
-    [activeRows, searchText, selectedBuyFilter, selectedCountry, selectedStatus, selectedWonBy]
+    [rows, selectedBuyFilter, selectedStatus, selectedWonBy]
   );
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
 
   const allSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
   const partiallySelected = selectedIds.size > 0 && !allSelected;
@@ -253,7 +255,7 @@ const ChatAppeals: React.FC = () => {
       <ChatAppealsTable
         searchText={searchText}
         onSearchTextChange={setSearchText}
-        filteredRows={filteredRows}
+        filteredRows={loadingRows ? [] : filteredRows}
         selectedIds={selectedIds}
         partiallySelected={partiallySelected}
         allSelected={allSelected}
@@ -262,10 +264,50 @@ const ChatAppeals: React.FC = () => {
         onViewChat={setActiveChatUser}
       />
 
+      {loadingRows && (
+        <p className="text-center text-sm text-white">Loading appeals...</p>
+      )}
+
+      <div className="flex flex-col gap-3 rounded-[20px] bg-[#0B1820] px-4 py-3 md:flex-row md:items-center md:justify-between">
+        <p className="text-[12px] text-white">
+          {totalItems === 0
+            ? "Showing 0 appeals"
+            : `Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${formatNumber(totalItems)} appeals`}
+        </p>
+        <div className="flex items-center gap-2 text-white">
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+          >
+            &lt;
+          </button>
+          {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((pageNum) => (
+            <button
+              key={pageNum}
+              onClick={() => setCurrentPage(pageNum)}
+              className={`h-8 min-w-8 rounded-lg px-2 text-[12px] ${currentPage === pageNum ? "bg-[#1C2630]" : "opacity-70"}`}
+            >
+              {pageNum}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+          >
+            &gt;
+          </button>
+        </div>
+      </div>
+
       <SupportChatModal
         isOpen={Boolean(activeChatUser)}
         onClose={() => setActiveChatUser(null)}
         username={activeChatUser?.username ?? "User"}
+        orderId={activeChatUser?.id}
+        mode="appeal"
+        onUpdated={loadAppeals}
       />
     </div>
   );

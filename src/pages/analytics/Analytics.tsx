@@ -2,6 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, CircleDollarSign, FileChartColumnIncreasing, Search, Wallet } from "lucide-react";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
+import { fetchAnalyticsFraud, fetchAnalyticsGeneral } from "../../services/admin";
+import { formatCurrency, formatDateTime, formatNumber } from "../../utils/adminFormatters";
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -34,41 +36,11 @@ interface FraudRow {
   date: string;
 }
 
-const fraudRows: FraudRow[] = [
-  { id: "1", name: "Qamardeen Malik", amount: "$2,000", type: "Fiat", prediction: "Legitimate", confidence: "90%", riskLevel: "Safe", date: "22/10/25 - 07:22 AM" },
-  { id: "2", name: "Qamardeen Malik", amount: "$2,000", type: "Fiat", prediction: "Legitimate", confidence: "80%", riskLevel: "Safe", date: "22/10/25 - 07:22 AM" },
-  { id: "3", name: "Qamardeen Malik", amount: "$2,000", type: "Fiat", prediction: "Legitimate", confidence: "90%", riskLevel: "Safe", date: "22/10/25 - 07:22 AM" },
-  { id: "4", name: "Qamardeen Malik", amount: "$2,000", type: "Fiat", prediction: "Fraudulent", confidence: "90%", riskLevel: "High risk", date: "22/10/25 - 07:22 AM" },
-];
+const mapFraudPrediction = (prediction: string): FraudRow["prediction"] =>
+  prediction === "Suspicious" ? "Fraudulent" : "Legitimate";
 
-const fraudChart = {
-  legit: [620, 250, 450, 620, 110, 480, 620, 620, 620, 600, 580, 560],
-  fraud: [400, 560, 300, 560, 250, 400, 400, 400, 400, 390, 370, 360],
-};
-
-const timeRangeFactor: Record<string, number> = {
-  "All Time": 1,
-  "7 Days": 0.6,
-  "1 month": 0.75,
-  "1 Year": 1.15,
-  Custom: 0.5,
-};
-
-const generalStatsByRange: Record<string, [string, string, string, string]> = {
-  "All Time": ["2,500", "200", "n200,000", "n200,000"],
-  "7 Days": ["1,120", "96", "n84,000", "n90,000"],
-  "1 month": ["1,860", "130", "n130,000", "n140,000"],
-  "1 Year": ["3,400", "260", "n320,000", "n340,000"],
-  Custom: ["980", "70", "n58,000", "n64,000"],
-};
-
-const fraudStatsByRange: Record<string, [string, string, string, string]> = {
-  "All Time": ["200", "100", "20", "80"],
-  "7 Days": ["92", "52", "8", "32"],
-  "1 month": ["140", "76", "12", "52"],
-  "1 Year": ["310", "168", "30", "112"],
-  Custom: ["75", "38", "6", "31"],
-};
+const mapFraudRiskLevel = (riskLevel: string): FraudRow["riskLevel"] =>
+  riskLevel === "High" ? "High risk" : "Safe";
 
 const Analytics: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"General" | "Fraud Detection">("General");
@@ -87,9 +59,68 @@ const Analytics: React.FC = () => {
   const [showTypeFilterDropdown, setShowTypeFilterDropdown] = useState(false);
   const transactionFilterRef = useRef<HTMLDivElement | null>(null);
   const typeFilterRef = useRef<HTMLDivElement | null>(null);
+  const [generalData, setGeneralData] = useState<any>(null);
+  const [fraudRows, setFraudRows] = useState<FraudRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const transactionFilterOptions = ["All Transactions", "Legitimate", "Fraudulent", "Unassigned"];
   const typeFilterOptions = ["All", "Fiat", "Crypto"];
+
+  useEffect(() => {
+    const loadGeneral = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchAnalyticsGeneral({
+          range: selectedTimeRange,
+          mode,
+        });
+        setGeneralData(data);
+      } catch (error) {
+        console.error("Failed to load general analytics:", error);
+        setGeneralData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeTab === "General") {
+      loadGeneral();
+    }
+  }, [activeTab, selectedTimeRange, mode]);
+
+  useEffect(() => {
+    const loadFraud = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchAnalyticsFraud({
+          range: selectedTimeRange,
+          search: fraudSearch.trim() || undefined,
+          limit: 100,
+        });
+        setFraudRows(
+          (data?.items || []).map((row: any) => ({
+            id: String(row.id),
+            name: row.name,
+            amount: formatCurrency(row.amount),
+            type: row.type === "mixed" ? "Fiat" : String(row.type || "Fiat"),
+            prediction: mapFraudPrediction(row.prediction),
+            confidence: `${row.confidence || 0}%`,
+            riskLevel: mapFraudRiskLevel(row.riskLevel),
+            date: formatDateTime(row.date),
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load fraud analytics:", error);
+        setFraudRows([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (activeTab === "Fraud Detection") {
+      loadFraud();
+    }
+  }, [activeTab, selectedTimeRange, fraudSearch]);
 
   useEffect(() => {
     const handleOutside = (event: MouseEvent) => {
@@ -111,48 +142,64 @@ const Analytics: React.FC = () => {
   }, []);
 
   const stats = useMemo(() => {
-    const generalValues = generalStatsByRange[selectedTimeRange] ?? generalStatsByRange["All Time"];
-    const fraudValues = fraudStatsByRange[selectedTimeRange] ?? fraudStatsByRange["All Time"];
-
     if (activeTab === "Fraud Detection") {
+      const total = fraudRows.length;
+      const legitimate = fraudRows.filter((row) => row.prediction === "Legitimate").length;
+      const fraudulent = fraudRows.filter((row) => row.prediction === "Fraudulent").length;
+      const unassigned = fraudRows.filter((row) => row.riskLevel === "High risk" && row.prediction === "Legitimate").length;
+      const values = loading
+        ? ["...", "...", "...", "..."]
+        : [formatNumber(total), formatNumber(legitimate), formatNumber(fraudulent), formatNumber(unassigned)];
+
       return [
-        { label: "Total Transactions", value: fraudValues[0], icon: FileChartColumnIncreasing },
-        { label: "Legitimate Transactions", value: fraudValues[1], icon: Wallet },
-        { label: "Fraudulent Revenue", value: fraudValues[2], icon: CircleDollarSign },
-        { label: "Unassigned Transactions", value: fraudValues[3], icon: Wallet },
+        { label: "Total Transactions", value: values[0], icon: FileChartColumnIncreasing },
+        { label: "Legitimate Transactions", value: values[1], icon: Wallet },
+        { label: "Fraudulent Revenue", value: values[2], icon: CircleDollarSign },
+        { label: "Unassigned Transactions", value: values[3], icon: Wallet },
       ];
     }
+
+    const values = loading
+      ? ["...", "...", "...", "..."]
+      : [
+          formatNumber(generalData?.transactionCount || 0),
+          formatNumber(generalData?.transactionCount || 0),
+          `n${formatNumber(generalData?.revenue || 0)}`,
+          `n${formatNumber((generalData?.cryptoVolume || 0) + (generalData?.fiatVolume || 0))}`,
+        ];
+
     return [
-      { label: "Total users", value: generalValues[0], icon: Wallet },
-      { label: "Total Transactions", value: generalValues[1], icon: FileChartColumnIncreasing },
-      { label: "Total Revenue", value: generalValues[2], icon: CircleDollarSign },
-      { label: "Total Balance", value: generalValues[3], icon: Wallet },
+      { label: "Total users", value: values[0], icon: Wallet },
+      { label: "Total Transactions", value: values[1], icon: FileChartColumnIncreasing },
+      { label: "Total Revenue", value: values[2], icon: CircleDollarSign },
+      { label: "Total Balance", value: values[3], icon: Wallet },
     ];
-  }, [activeTab, selectedTimeRange]);
+  }, [activeTab, fraudRows, generalData, loading]);
 
   const pieValues = useMemo(() => {
     if (activeTab === "Fraud Detection") {
-      const map: Record<string, { crypto: number; flat: number; p2p: number }> = {
-        "All Time": { crypto: 55, flat: 25, p2p: 20 },
-        "7 Days": { crypto: 58, flat: 24, p2p: 18 },
-        "1 month": { crypto: 56, flat: 23, p2p: 21 },
-        "1 Year": { crypto: 53, flat: 27, p2p: 20 },
-        Custom: { crypto: 57, flat: 22, p2p: 21 },
+      const total = fraudRows.length || 1;
+      const legit = fraudRows.filter((row) => row.prediction === "Legitimate").length;
+      const fraud = fraudRows.filter((row) => row.prediction === "Fraudulent").length;
+      const unassigned = Math.max(total - legit - fraud, 0);
+      return {
+        crypto: Math.round((legit / total) * 100),
+        flat: Math.round((fraud / total) * 100),
+        p2p: Math.round((unassigned / total) * 100),
       };
-      return map[selectedTimeRange] ?? map["All Time"];
     }
 
-    const map: Record<string, { crypto: number; flat: number; p2p: number }> = {
-      "All Time": { crypto: 59, flat: 15, p2p: 26 },
-      "7 Days": { crypto: 57, flat: 17, p2p: 26 },
-      "1 month": { crypto: 56, flat: 18, p2p: 26 },
-      "1 Year": { crypto: 61, flat: 14, p2p: 25 },
-      Custom: { crypto: 55, flat: 19, p2p: 26 },
+    const crypto = Number(generalData?.cryptoVolume || 0);
+    const flat = Number(generalData?.fiatVolume || 0);
+    const total = crypto + flat || 1;
+    return {
+      crypto: Math.round((crypto / total) * 100),
+      flat: Math.round((flat / total) * 100),
+      p2p: Math.max(100 - Math.round((crypto / total) * 100) - Math.round((flat / total) * 100), 0),
     };
-    return map[selectedTimeRange] ?? map["All Time"];
-  }, [activeTab, selectedTimeRange]);
+  }, [activeTab, fraudRows, generalData]);
 
-  const factor = timeRangeFactor[selectedTimeRange] ?? 1;
+  const factor = Math.max(Number(generalData?.transactionCount || fraudRows.length || 1) / 200, 0.5);
   const activeChart = useMemo(
     () => ({
       left: chartByMode[mode].left.map((value) => Math.round(value * factor)),
@@ -160,13 +207,14 @@ const Analytics: React.FC = () => {
     }),
     [mode, factor]
   );
-  const activeFraudChart = useMemo(
-    () => ({
-      legit: fraudChart.legit.map((value) => Math.round(value * factor)),
-      fraud: fraudChart.fraud.map((value) => Math.round(value * factor)),
-    }),
-    [factor]
-  );
+  const activeFraudChart = useMemo(() => {
+    const legitBase = fraudRows.filter((row) => row.prediction === "Legitimate").length * 40 || 200;
+    const fraudBase = fraudRows.filter((row) => row.prediction === "Fraudulent").length * 40 || 120;
+    return {
+      legit: chartByMode.Revenue.left.map((value) => Math.round((value / 600) * legitBase)),
+      fraud: chartByMode.Revenue.right.map((value) => Math.round((value / 400) * fraudBase)),
+    };
+  }, [fraudRows]);
   const maxValue = 760;
   const filteredFraudRows = useMemo(
     () =>
@@ -504,23 +552,23 @@ const Analytics: React.FC = () => {
                 style={{
                   background:
                     activeTab === "Fraud Detection"
-                      ? "conic-gradient(#FF1E1E 0% 25%, #000000 25% 50%, #00B60F 50% 100%)"
-                      : "conic-gradient(#4C80BE 0% 25%, #B59B43 25% 45%, #AD3E93 45% 100%)",
+                      ? `conic-gradient(#00B60F 0% ${pieValues.crypto}%, #FF1E1E ${pieValues.crypto}% ${pieValues.crypto + pieValues.flat}%, #000000 ${pieValues.crypto + pieValues.flat}% 100%)`
+                      : `conic-gradient(#AD3E93 0% ${pieValues.crypto}%, #4C80BE ${pieValues.crypto}% ${pieValues.crypto + pieValues.flat}%, #B59B43 ${pieValues.crypto + pieValues.flat}% 100%)`,
                 }}
               >
                 {activeTab === "Fraud Detection" ? (
                   <>
-                    <span className="absolute left-[26px] top-[72px] text-[12px] font-normal text-white">55%</span>
-                    <span className="absolute right-[30px] top-[31px] text-[12px] font-normal text-white">25%</span>
-                    <span className="absolute right-[33px] top-[90px] text-[12px] font-normal text-white">15%</span>
+                    <span className="absolute left-[26px] top-[72px] text-[12px] font-normal text-white">{pieValues.crypto}%</span>
+                    <span className="absolute right-[30px] top-[31px] text-[12px] font-normal text-white">{pieValues.flat}%</span>
+                    <span className="absolute right-[33px] top-[90px] text-[12px] font-normal text-white">{pieValues.p2p}%</span>
                   </>
                 ) : (
                   <>
-                    <span className="absolute right-[31px] top-[25px] text-[12px] font-normal text-[#E7EEF7]">25%</span>
+                    <span className="absolute right-[31px] top-[25px] text-[12px] font-normal text-[#E7EEF7]">{pieValues.flat}%</span>
                     <span className="absolute left-[71%] top-[70%] z-10 -translate-x-1/2 -translate-y-1/2 text-[12px] font-normal text-[#F0E2AE]">
-                      20%
+                      {pieValues.p2p}%
                     </span>
-                    <span className="absolute left-[25px] top-[78px] text-[12px] font-normal text-[#F5DFF0]">55%</span>
+                    <span className="absolute left-[25px] top-[78px] text-[12px] font-normal text-[#F5DFF0]">{pieValues.crypto}%</span>
                   </>
                 )}
               </div>
@@ -685,7 +733,16 @@ const Analytics: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFraudRows.map((row) => (
+                  {loading ? (
+                    <tr className="border-b border-[#2B363E] text-[11px] text-[#CFD7DD]">
+                      <td colSpan={9} className="px-3 py-6 text-center">Loading fraud data...</td>
+                    </tr>
+                  ) : filteredFraudRows.length === 0 ? (
+                    <tr className="border-b border-[#2B363E] text-[11px] text-[#CFD7DD]">
+                      <td colSpan={9} className="px-3 py-6 text-center">No fraud records found</td>
+                    </tr>
+                  ) : (
+                    filteredFraudRows.map((row) => (
                     <tr key={row.id} className="border-b border-[#2B363E] text-[11px] text-white">
                       <td className="px-3 py-3">
                         <input
@@ -721,7 +778,7 @@ const Analytics: React.FC = () => {
                         <button className="h-[28px] rounded-full bg-[#A9EF45] px-4 text-[9px] text-[#0C141C]">User Details</button>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>

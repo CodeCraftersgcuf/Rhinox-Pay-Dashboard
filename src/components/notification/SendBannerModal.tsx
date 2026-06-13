@@ -1,21 +1,28 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Image, X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { createBanner } from "../../services/admin";
+import { mapCountryCode } from "../../utils/adminFormatters";
 
 interface SendBannerModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const inputClass =
   "h-10 w-full rounded-lg border border-transparent bg-[#0F1825] px-4 text-xs text-white outline-none placeholder:text-[#878C92] focus:border-[#2A3D4D]";
 
-const SendBannerModal: React.FC<SendBannerModalProps> = ({ isOpen, onClose }) => {
+const SendBannerModal: React.FC<SendBannerModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [country, setCountry] = useState("Select country");
+  const [title, setTitle] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const countryOptions = ["Select country", "Nigeria", "Ghana", "Kenya", "South Africa"];
 
   useEffect(() => {
@@ -67,9 +74,32 @@ const SendBannerModal: React.FC<SendBannerModalProps> = ({ isOpen, onClose }) =>
 
         <form
           className="space-y-3 p-4"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            onClose();
+            if (!selectedFile) {
+              setError("Please select a banner image");
+              return;
+            }
+            setSubmitting(true);
+            setError(null);
+            try {
+              const formData = new FormData();
+              formData.append("image", selectedFile);
+              formData.append("title", title || "Banner");
+              const countryCode = mapCountryCode(country);
+              if (countryCode) formData.append("countries", countryCode);
+              await createBanner(formData);
+              onSuccess?.();
+              onClose();
+              setTitle("");
+              setCountry("Select country");
+              setSelectedFile(null);
+              setSelectedFileName("");
+            } catch (err: unknown) {
+              setError(err instanceof Error ? err.message : "Failed to create banner");
+            } finally {
+              setSubmitting(false);
+            }
           }}
         >
           <div>
@@ -135,21 +165,35 @@ const SendBannerModal: React.FC<SendBannerModalProps> = ({ isOpen, onClose }) =>
               className="hidden"
               onChange={(event) => {
                 const file = event.target.files?.[0];
+                setSelectedFile(file || null);
                 setSelectedFileName(file ? file.name : "");
               }}
             />
           </div>
 
           <div>
+            <label className="mb-2 block text-xs text-white">Title</label>
+            <input
+              className={inputClass}
+              placeholder="Banner title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          {error && <p className="text-xs text-red-400">{error}</p>}
+
+          <div>
             <label className="mb-2 block text-xs text-white">Link</label>
-            <input className={inputClass} placeholder="Input banner link" />
+            <input className={inputClass} placeholder="Input banner link (optional)" />
           </div>
 
           <button
             type="submit"
-            className="mt-4 flex h-[38px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-xs font-medium text-[#0C141C]"
+            disabled={submitting}
+            className="mt-4 flex h-[38px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-xs font-medium text-[#0C141C] disabled:opacity-50"
           >
-            Proceed
+            {submitting ? "Saving..." : "Proceed"}
           </button>
         </form>
       </div>

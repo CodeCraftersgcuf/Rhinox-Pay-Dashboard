@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import images from "../../../../constants/images";
+import { fetchUserTransactions, fetchTransactionById } from "../../../../services/admin";
+import { formatDateTime } from "../../../../utils/adminFormatters";
 
 const UserTransaction: React.FC = () => {
   const { username } = useParams();
@@ -35,6 +37,11 @@ const UserTransaction: React.FC = () => {
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [showTransactionModal, setShowTransactionModal] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [apiTransactions, setApiTransactions] = useState<any[]>([]);
+  const [_totalTransactionCount, setTotalTransactionCount] = useState(0);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
 
   const txTypeDropdownRef = useRef<HTMLDivElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
@@ -99,769 +106,109 @@ const UserTransaction: React.FC = () => {
     };
   }, [showTxTypeDropdown, showCountryDropdown, showStatusDropdown, showBuyDropdown, showTokenDropdown]);
 
-  const sendTransactions = [
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N200,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bank Transfer",
-      date: "Oct 16, 2025 - 07:22 AM",
-      recipient: "Adebisi Lateefat",
-      fee: "N20",
-      bank: "Wema Bank",
-      accountNumber: "0123456789",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "failed",
-      country: "Nigeria",
-      route: "Bank Transfer",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "John Doe",
-      fee: "N10",
-      bank: "Access Bank",
-      accountNumber: "1234567890",
-      accountName: "John Doe",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bank Transfer",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Jane Smith",
-      fee: "N10",
-      bank: "GTBank",
-      accountNumber: "0987654321",
-      accountName: "Jane Smith",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bank Transfer",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Mike Johnson",
-      fee: "N10",
-      bank: "First Bank",
-      accountNumber: "1122334455",
-      accountName: "Mike Johnson",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bank Transfer",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Sarah Williams",
-      fee: "N10",
-      bank: "Zenith Bank",
-      accountNumber: "5566778899",
-      accountName: "Sarah Williams",
-      paymentMethod: "Bank Transfer"
-    }
-  ];
+  const mapApiTransaction = (tx: any) => ({
+    id: String(tx.reference || tx.id),
+    amount: `${tx.currency || ''}${tx.amount ?? 0}`,
+    status: tx.status === 'completed' ? 'success' : tx.status,
+    country: tx.country || 'Nigeria',
+    route: tx.channel || tx.paymentMethod || tx.type || '-',
+    date: formatDateTime(tx.createdAt),
+    recipient: tx.user?.name || tx.description || '-',
+    fee: String(tx.fee || 0),
+    bank: (tx.metadata as any)?.bank || '-',
+    accountNumber: (tx.metadata as any)?.accountNumber || '-',
+    accountName: (tx.metadata as any)?.accountName || '-',
+    paymentMethod: tx.paymentMethod || tx.channel || '-',
+    type: tx.type,
+    currency: tx.currency,
+    metadata: tx.metadata,
+    user: tx.user,
+    transactionType: tx.type,
+  });
 
-  const fundTransactions = [
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Yellow Card",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 1",
-      fee: "N10",
-      bank: "Yellow Card",
-      accountNumber: "1234567890",
-      accountName: "User 1",
-      paymentMethod: "Yellow Card"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Yellow Card",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 2",
-      fee: "N10",
-      bank: "Yellow Card",
-      accountNumber: "1234567891",
-      accountName: "User 2",
-      paymentMethod: "Yellow Card"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 3",
-      fee: "N10",
-      bank: "Conversion",
-      accountNumber: "1234567892",
-      accountName: "User 3",
-      paymentMethod: "Conversion"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Crypto",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 4",
-      fee: "N10",
-      bank: "Crypto",
-      accountNumber: "1234567893",
-      accountName: "User 4",
-      paymentMethod: "Crypto"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 5",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567894",
-      accountName: "User 5",
-      paymentMethod: "P2P"
-    }
-  ];
+  useEffect(() => {
+    if (!username) return;
 
-  const convertTransactions = [
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      amountSent: "N20,000",
-      received: "c1,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 1",
-      fee: "N10",
-      bank: "Conversion",
-      accountNumber: "1234567890",
-      accountName: "User 1",
-      paymentMethod: "Conversion",
-      rate: "1N = c1000",
-      conversion: "NGN - GHC"
-    },
-    {
-      id: "asdfghjk109876",
-      amount: "N30,000",
-      amountSent: "N30,000",
-      received: "c3,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 09:00 AM",
-      recipient: "User 2",
-      fee: "N15",
-      bank: "Conversion",
-      accountNumber: "1234567891",
-      accountName: "User 2",
-      paymentMethod: "Conversion",
-      rate: "1N = c1000",
-      conversion: "NGN - GHC"
-    },
-    {
-      id: "zxczxqwe456789",
-      amount: "N45,000",
-      amountSent: "N45,000",
-      received: "c4,500",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 08:15 AM",
-      recipient: "User 3",
-      fee: "N22",
-      bank: "Conversion",
-      accountNumber: "1234567892",
-      accountName: "User 3",
-      paymentMethod: "Conversion",
-      rate: "1N = c1000",
-      conversion: "NGN - GHC"
-    },
-    {
-      id: "qwertyuiop56789",
-      amount: "N60,000",
-      amountSent: "N60,000",
-      received: "c6,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 10:30 AM",
-      recipient: "User 4",
-      fee: "N30",
-      bank: "Conversion",
-      accountNumber: "1234567893",
-      accountName: "User 4",
-      paymentMethod: "Conversion",
-      rate: "1N = c1000",
-      conversion: "NGN - GHC"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N25,000",
-      amountSent: "N25,000",
-      received: "c2,500",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 11:45 AM",
-      recipient: "User 5",
-      fee: "N12",
-      bank: "Conversion",
-      accountNumber: "1234567894",
-      accountName: "User 5",
-      paymentMethod: "Conversion",
-      rate: "1N = c1000",
-      conversion: "NGN - GHC"
-    }
-  ];
+    const loadTransactions = async () => {
+      setLoadingTransactions(true);
+      try {
+        const data = await fetchUserTransactions(username, {
+          page: currentPage,
+          limit: itemsPerPage,
+          range: selectedTimeRange,
+          assetType: transactionType,
+          action: selectedAction,
+          country: selectedCountry,
+          status: selectedStatus,
+          channel: selectedTxType,
+          buySell: selectedBuy,
+          cryptoAction: selectedCryptoAction,
+          token: selectedToken,
+          search: searchQuery,
+        });
+        setApiTransactions((data?.items || []).map(mapApiTransaction));
+        setTotalTransactionCount(data?.pagination?.total || 0);
+      } catch (error) {
+        console.error('Failed to load user transactions:', error);
+        setApiTransactions([]);
+        setTotalTransactionCount(0);
+      } finally {
+        setLoadingTransactions(false);
+      }
+    };
 
-  const withdrawTransactions = [
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Yellow Card",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 1",
-      fee: "N10",
-      bank: "Wema Bank",
-      accountNumber: "1234567890",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Yellow Card",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 2",
-      fee: "N10",
-      bank: "Wema Bank",
-      accountNumber: "1234567891",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Conversion",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 3",
-      fee: "N10",
-      bank: "Wema Bank",
-      accountNumber: "1234567892",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Crypto",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 4",
-      fee: "N10",
-      bank: "Wema Bank",
-      accountNumber: "1234567893",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "User 5",
-      fee: "N10",
-      bank: "Wema Bank",
-      accountNumber: "1234567894",
-      accountName: "Opay",
-      paymentMethod: "Bank Transfer"
-    }
-  ];
+    loadTransactions();
+  }, [
+    username,
+    currentPage,
+    selectedTimeRange,
+    transactionType,
+    selectedAction,
+    selectedCountry,
+    selectedStatus,
+    selectedTxType,
+    selectedBuy,
+    selectedCryptoAction,
+    selectedToken,
+    searchQuery,
+  ]);
 
-  const p2pTransactions = [
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Lawal",
-      vendorName: "Lawal",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567890",
-      accountName: "Lawal",
-      paymentMethod: "P2P",
-      merchantName: "Qamar Malik",
-      p2pType: "Crypto Sell",
-      usdtAmount: "20 USDT",
-      price: "1,500 NGN",
-      totalQty: "5.2 USDT",
-      txFee: "0",
-      txId: "128DJ2I311DJKQKCM",
-      orderTime: "Oct 16, 2025 - 07:22AM",
-      review: "He is fast and reliable"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Adewale Saheed",
-      vendorName: "Adewale Saheed",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567891",
-      accountName: "Adewale Saheed",
-      paymentMethod: "P2P"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Chris",
-      vendorName: "Chris",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567892",
-      accountName: "Chris",
-      paymentMethod: "P2P"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Shawnn Michael",
-      vendorName: "Shawnn Michael",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567893",
-      accountName: "Shawnn Michael",
-      paymentMethod: "P2P"
-    },
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N20,000",
-      status: "success",
-      country: "Nigeria",
-      route: "P2P",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Anita Baker",
-      vendorName: "Anita Baker",
-      fee: "N10",
-      bank: "P2P",
-      accountNumber: "1234567894",
-      accountName: "Anita Baker",
-      paymentMethod: "P2P"
-    }
-  ];
-
-  const billPaymentsTransactions = [
-    {
-      id: "asdkfj12324kdsk",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Airtime",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Bill Payment User 1",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL001",
-      accountName: "Bill Payment User 1",
-      paymentMethod: "Bill Payment",
-      billerType: "MTN",
-      mobileNumber: "0901245678",
-      rechargeNumber: "081245789",
-      transactionType: "Airtime Top Up"
-    },
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Cable tv",
-      date: "Oct 16, 2025 - 07:22AM",
-      recipient: "Bill Payment User 2",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL002",
-      accountName: "Bill Payment User 2",
-      paymentMethod: "Bill Payment",
-      billerType: "Dstv",
-      plan: "Dstv Premium",
-      decoderNumber: "042457896",
-      cableAccountName: "Qamardeen Abdul Malik",
-      transactionType: "Cable TV"
-    },
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Data Recharge",
-      date: "Oct 16, 2025 - 07:22AM",
-      recipient: "Bill Payment User 3",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL003",
-      accountName: "Bill Payment User 3",
-      paymentMethod: "Bill Payment",
-      billerType: "MTN",
-      mobileNumber: "08012456789",
-      plan: "1.5 GB for 30 Days",
-      rechargeNumber: "081245789",
-      transactionType: "Bill Payment"
-    },
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Electricity",
-      date: "Oct 16, 2025 - 07:22AM",
-      recipient: "Bill Payment User 4",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL004",
-      accountName: "Bill Payment User 4",
-      paymentMethod: "Bill Payment",
-      billerType: "Ikeja Electricity",
-      accountType: "Prepaid",
-      meterNumber: "042457896",
-      electricityAccountName: "Qamardeen Abdul Malik",
-      token: "ABCD-DFGTH-ASWER-1234-133ER",
-      transactionType: "Electricity"
-    },
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Betting",
-      date: "Oct 16, 2025 - 07:22AM",
-      recipient: "Bill Payment User 5",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL005",
-      accountName: "Bill Payment User 5",
-      paymentMethod: "Bill Payment",
-      billerType: "Sportybet",
-      userId: "081234567",
-      bettingAccountName: "Qamardeen Abdul Malik",
-      token: "ABCD-DFGTH-ASWER-1234-133ER",
-      transactionType: "Betting"
-    },
-    {
-      id: "12dwerkxywurcksc",
-      amount: "N2,000",
-      status: "success",
-      country: "Nigeria",
-      route: "Bill Payment",
-      type: "Internet",
-      date: "Oct 16, 2025 - 07:22AM",
-      recipient: "Bill Payment User 6",
-      fee: "N0",
-      bank: "Bill Payment",
-      accountNumber: "BILL006",
-      accountName: "Bill Payment User 6",
-      paymentMethod: "Bill Payment",
-      billerType: "Smile",
-      routerNumber: "08012456789",
-      plan: "1.5 GB for 30 Days",
-      rechargeNumber: "081245789",
-      transactionType: "Bill Payment"
-    }
-  ];
-
-  // Crypto transactions data
-  const cryptoTransactions = [
-    {
-      id: "Crypto Deposit",
-      amount: "0.000123",
-      status: "success",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 07:22 AM",
-      recipient: "Crypto User 1",
-      fee: "0.00001",
-      cryptoLogo: images.image_26,
-      quantity: "0.000123 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    },
-    {
-      id: "Crypto Deposit",
-      amount: "0.000456",
-      status: "pending",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 08:15 AM",
-      recipient: "Crypto User 2",
-      fee: "0.00002",
-      cryptoLogo: images.image_26,
-      quantity: "0.25 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123c2fk3edw",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    },
-    {
-      id: "Crypto Deposit",
-      amount: "0.000789",
-      status: "success",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 09:30 AM",
-      recipient: "Crypto User 3",
-      fee: "0.00001",
-      cryptoLogo: images.image_26,
-      quantity: "0.000789 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    },
-    {
-      id: "Crypto Deposit",
-      amount: "0.001234",
-      status: "pending",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 10:45 AM",
-      recipient: "Crypto User 4",
-      fee: "0.00005",
-      cryptoLogo: images.image_26,
-      quantity: "0.001234 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123c2fk3edw",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    },
-    {
-      id: "Crypto Deposit",
-      amount: "0.000567",
-      status: "success",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 11:20 AM",
-      recipient: "Crypto User 5",
-      fee: "0.00001",
-      cryptoLogo: images.image_26,
-      quantity: "0.000567 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    },
-    {
-      id: "Crypto Deposit",
-      amount: "0.000890",
-      status: "pending",
-      crypto: "Ethereum",
-      network: "Ethereum",
-      date: "22/10/25 - 12:30 PM",
-      recipient: "Crypto User 6",
-      fee: "0.00001",
-      cryptoLogo: images.image_26,
-      quantity: "0.000890 ETH",
-      amountUSD: "$2,550.50",
-      feeUSD: "$2.50",
-      receivingAddress: "0x123edfgtrwe457kslwitkwflelwlvid",
-      sendingAddress: "0x123c2fk3edw",
-      txHash: "13ijksm219ef23e9f3295h2nfi923rf9n9219",
-      transactionId: "12dwerkxywurcksc"
-    }
-  ];
-
-  const normalizeText = (value: unknown) => String(value ?? "").toLowerCase().trim();
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    selectedAction,
+    transactionType,
+    selectedStatus,
+    selectedCountry,
+    selectedTimeRange,
+    selectedTxType,
+    selectedBuy,
+    selectedCryptoAction,
+    selectedToken,
+    searchQuery,
+  ]);
 
   // Get transactions based on selected action, transaction type, and active filters
-  const getTransactions = () => {
-    let transactions: any[] = [];
+  const transactions = apiTransactions;
 
-    if (transactionType === "Crypto") {
-      transactions = cryptoTransactions;
-    } else {
-      switch (selectedAction) {
-        case "Send":
-          transactions = sendTransactions;
-          break;
-        case "Fund":
-          transactions = fundTransactions;
-          break;
-        case "Convert":
-          transactions = convertTransactions;
-          break;
-        case "Withdraw":
-          transactions = withdrawTransactions;
-          break;
-        case "P2P":
-          transactions = p2pTransactions;
-          break;
-        case "Bill Payments":
-          transactions = billPaymentsTransactions;
-          break;
-        default:
-          transactions = sendTransactions;
-      }
+  const openTransactionDetail = async (transaction: any) => {
+    setShowTransactionModal(true);
+    setSelectedTransaction(transaction);
+    const txId = transaction.id || transaction.reference;
+    if (!txId) return;
+    try {
+      const detail = await fetchTransactionById(txId);
+      setSelectedTransaction((prev: any) => ({
+        ...prev,
+        ...detail,
+        amount: detail?.amount != null ? `${detail.currency || ""}${detail.amount}` : prev?.amount,
+        date: detail?.createdAt ? formatDateTime(detail.createdAt) : prev?.date,
+        status: detail?.status === "completed" ? "success" : detail?.status || prev?.status,
+      }));
+    } catch (error) {
+      console.error("Failed to load transaction detail:", error);
     }
-
-    // Status filter
-    if (selectedStatus !== "All Status") {
-      const statusMap: Record<string, string> = {
-        "Successful": "success",
-        "Pending": "pending",
-        "Failed": "failed"
-      };
-      const filterStatus = statusMap[selectedStatus];
-      if (filterStatus) {
-        transactions = transactions.filter(t => t.status === filterStatus);
-      }
-    }
-
-    if (transactionType === "Crypto") {
-      // Crypto action filter (All / Deposit / Withdraw / P2P)
-      if (selectedCryptoAction !== "All") {
-        const expectedAction = normalizeText(selectedCryptoAction);
-        transactions = transactions.filter((t) => {
-          const actionSource = normalizeText((t as any).id || (t as any).route || (t as any).transactionType);
-          return actionSource.includes(expectedAction);
-        });
-      }
-
-      // Token filter
-      if (selectedToken !== "Token") {
-        transactions = transactions.filter((t) => normalizeText((t as any).crypto) === normalizeText(selectedToken));
-      }
-    } else {
-      // Country filter
-      if (selectedCountry !== "Country" && selectedCountry !== "All Countries") {
-        transactions = transactions.filter((t) => normalizeText((t as any).country) === normalizeText(selectedCountry));
-      }
-
-      // Tx Type/Route filter (for Send/Fund/Withdraw modes)
-      const isTxTypeActive =
-        selectedTxType !== "Tx Type" &&
-        selectedTxType !== "Route" &&
-        selectedTxType !== "All types" &&
-        selectedTxType !== "All Routes";
-
-      if (isTxTypeActive && selectedAction !== "Convert" && selectedAction !== "P2P" && selectedAction !== "Bill Payments") {
-        transactions = transactions.filter((t) => {
-          const route = normalizeText((t as any).route);
-          const paymentMethod = normalizeText((t as any).paymentMethod);
-          const type = normalizeText((t as any).type);
-          const expected = normalizeText(selectedTxType);
-          return route.includes(expected) || paymentMethod.includes(expected) || type.includes(expected);
-        });
-      }
-
-      // Buy filter for P2P / Bill Payments
-      if (selectedAction === "P2P" && selectedBuy !== "Buy" && selectedBuy !== "All Trades") {
-        const expectedSide = selectedBuy === "Buy Trades" ? "buy" : "sell";
-        transactions = transactions.filter((t) => {
-          const side = normalizeText((t as any).p2pType || (t as any).transactionType);
-          return side.includes(expectedSide);
-        });
-      }
-
-      if (selectedAction === "Bill Payments" && selectedBuy !== "Buy" && selectedBuy !== "All Bill Payments") {
-        transactions = transactions.filter((t) => {
-          const type = normalizeText((t as any).type);
-          return type.includes(normalizeText(selectedBuy));
-        });
-      }
-    }
-
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = normalizeText(searchQuery);
-      transactions = transactions.filter((t) => {
-        const searchableValues = [
-          (t as any).id,
-          (t as any).amount,
-          (t as any).amountSent,
-          (t as any).received,
-          (t as any).status,
-          (t as any).country,
-          (t as any).route,
-          (t as any).type,
-          (t as any).conversion,
-          (t as any).rate,
-          (t as any).date,
-          (t as any).recipient,
-          (t as any).vendorName,
-          (t as any).crypto,
-          (t as any).network
-        ];
-        return searchableValues.some((value) => normalizeText(value).includes(query));
-      });
-    }
-
-    return transactions;
   };
-
-  const transactions = getTransactions();
 
   useEffect(() => {
     setSelectedTransactions(new Set());
@@ -2057,7 +1404,15 @@ const UserTransaction: React.FC = () => {
                 }}
               >
                 <tbody>
-                  {transactions.map((transaction, index) => (
+                  {loadingTransactions ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-gray-400">Loading transactions...</td>
+                    </tr>
+                  ) : transactions.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-gray-400">No transactions found</td>
+                    </tr>
+                  ) : transactions.map((transaction, index) => (
                     <tr
                       key={index}
                       className="border-b border-[#2B363E] hover:bg-[#1A252F] transition-colors"
@@ -2326,10 +1681,7 @@ const UserTransaction: React.FC = () => {
                         }}
                       >
                         <button
-                          onClick={() => {
-                            setSelectedTransaction(transaction);
-                            setShowTransactionModal(true);
-                          }}
+                          onClick={() => openTransactionDetail(transaction)}
                           className="text-xs font-normal rounded-full whitespace-nowrap"
                           style={{
                             fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',

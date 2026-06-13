@@ -9,16 +9,22 @@ interface UserManagementTopBarProps {
   showBulkActionDropdown: boolean;
   setShowBulkActionDropdown: (show: boolean) => void;
   onAddUserClick: () => void;
+  selectedCount?: number;
+  onBulkActivate?: () => void;
+  onBulkDeactivate?: () => void;
 }
 
 const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
-  kycFilter,
+  kycFilter: _kycFilter,
   setKycFilter,
   showKycDropdown,
   setShowKycDropdown,
   showBulkActionDropdown,
   setShowBulkActionDropdown,
-  onAddUserClick
+  onAddUserClick,
+  selectedCount = 0,
+  onBulkActivate,
+  onBulkDeactivate,
 }) => {
   const kycDropdownRef = useRef<HTMLDivElement | null>(null);
   const bulkActionDropdownRef = useRef<HTMLDivElement | null>(null);
@@ -83,9 +89,10 @@ const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
                 <button
                   onClick={() => {
                     setShowBulkActionDropdown(false);
-                    // Handle Export as PDF action
+                    onBulkActivate?.();
                   }}
-                  className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors px-4"
+                  disabled={selectedCount === 0}
+                  className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors px-4 disabled:opacity-40"
                   style={{
                     fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                     fontSize: '14px',
@@ -95,14 +102,15 @@ const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
                     alignItems: 'center'
                   }}
                 >
-                  Export as PDF
+                  Activate Selected ({selectedCount})
                 </button>
                 <button
                   onClick={() => {
                     setShowBulkActionDropdown(false);
-                    // Handle Export as CSV action
+                    onBulkDeactivate?.();
                   }}
-                  className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors px-4"
+                  disabled={selectedCount === 0}
+                  className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors px-4 disabled:opacity-40"
                   style={{
                     fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                     fontSize: '14px',
@@ -112,7 +120,7 @@ const UserManagementTopBar: React.FC<UserManagementTopBarProps> = ({
                     alignItems: 'center'
                   }}
                 >
-                  Export as CSV
+                  Deactivate Selected ({selectedCount})
                 </button>
               </div>
             )}

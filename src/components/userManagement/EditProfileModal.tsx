@@ -1,14 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
 import images from "../../constants/images";
 import { User } from "../../services/userService";
+import { updateUser } from "../../services/admin";
 
 interface EditProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User | null;
+  onSuccess?: () => void;
 }
 
-const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, user }) => {
+const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, user, onSuccess }) => {
   const [formData, setFormData] = useState({
     country: "nigeria",
     firstName: "",
@@ -19,6 +21,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -101,11 +105,28 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
     setShowCountryDropdown(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Profile updated:", formData);
-    onClose();
+    if (!user?.id) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const payload: Record<string, string> = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        phone: formData.phoneNumber,
+      };
+      if (formData.password.trim()) {
+        (payload as any).password = formData.password;
+      }
+      await updateUser(user.id, payload);
+      onSuccess?.();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update profile");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -585,9 +606,11 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ isOpen, onClose, us
           </div>
 
           {/* Submit Button */}
+          {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
           <button
             type="submit"
-            className="text-black flex items-center justify-center mt-4"
+            disabled={submitting}
+            className="text-black flex items-center justify-center mt-4 disabled:opacity-50"
             style={{
               width: "93px",
               height: "34px",

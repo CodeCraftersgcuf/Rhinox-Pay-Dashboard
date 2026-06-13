@@ -2,14 +2,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import images from "../../constants/images";
+import { fetchDashboardLatestUsers } from "../../services/admin";
+import { bulkUpdateUsers } from "../../services/admin";
+import { formatNumber } from "../../utils/adminFormatters";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
-  walletBalance: string;
-  kycStatus: "verified" | "unverified";
+  phone?: string;
+  walletBalance?: number | string;
+  walletCurrency?: string;
+  kycStatus: string;
 }
 
 const LatestUsers: React.FC = () => {
@@ -18,69 +22,53 @@ const LatestUsers: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
+  const [usersData, setUsersData] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [dropdownPositions, setDropdownPositions] = useState<Record<string, { top: number; right: number }>>({});
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Mock JSON data
-  const usersData: User[] = [
-    {
-      id: "1",
-      name: "Qamardeen Malik",
-      email: "qamardeenoladimeji@gmail.com",
-      phone: "07033484845",
-      walletBalance: "N25,000",
-      kycStatus: "verified"
-    },
-    {
-      id: "2",
-      name: "Tunde Ajayi",
-      email: "tunde.ajayi@sample.com",
-      phone: "08123456789",
-      walletBalance: "N30,000",
-      kycStatus: "verified"
-    },
-    {
-      id: "3",
-      name: "Qamardeen Malik",
-      email: "qamardeenoladimeji@gmail.com",
-      phone: "07033484845",
-      walletBalance: "N25,000",
-      kycStatus: "unverified"
-    },
-    {
-      id: "4",
-      name: "Chinonso Okeke",
-      email: "chinonso.okeke@mail.com",
-      phone: "09098765432",
-      walletBalance: "N20,000",
-      kycStatus: "unverified"
-    },
-    {
-      id: "5",
-      name: "Amina Yusuf",
-      email: "amina.yusuf@example.com",
-      phone: "08012345678",
-      walletBalance: "N15,000",
-      kycStatus: "verified"
-    }
-  ];
+  const reloadUsers = () => setRefreshKey((k) => k + 1);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchDashboardLatestUsers(50);
+        setUsersData(
+          (Array.isArray(data) ? data : []).map((user) => ({
+            ...user,
+            id: String(user.id),
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load latest users:", error);
+        setUsersData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUsers();
+  }, [refreshKey]);
 
   const itemsPerPage = 5;
-  const totalUsers = 200;
-
-  // Filter users based on search query
   const filteredUsers = usersData.filter(user =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.phone.includes(searchQuery)
+    (user.phone || "").includes(searchQuery)
   );
+  const totalUsers = filteredUsers.length;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
   // Calculate pagination
-  const totalPages = Math.ceil(totalUsers / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(totalUsers / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const displayedUsers = filteredUsers.slice(0, itemsPerPage);
+  const displayedUsers = filteredUsers.slice(startIndex, endIndex);
 
   // Handle checkbox selection
   const handleSelectUser = (userId: string) => {
@@ -397,7 +385,11 @@ const LatestUsers: React.FC = () => {
               <col style={{ width: '6%' }} />
             </colgroup>
             <tbody>
-              {displayedUsers.map((user) => (
+              {loading ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-gray-400">Loading users...</td>
+                </tr>
+              ) : displayedUsers.map((user) => (
                 <tr
                   key={user.id}
                   className="border-b border-[#2B363E] hover:bg-[#1A252F] transition-colors"
@@ -513,7 +505,9 @@ const LatestUsers: React.FC = () => {
                         letterSpacing: '0%'
                       }}
                     >
-                      {user.walletBalance}
+                      {typeof user.walletBalance === 'number'
+                        ? formatNumber(user.walletBalance)
+                        : user.walletBalance || '-'}
                     </span>
                   </td>
                   <td className="py-3" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
@@ -591,7 +585,7 @@ const LatestUsers: React.FC = () => {
                           <button
                             onClick={() => {
                               setOpenDropdown(null);
-                              // Handle block user action
+                              bulkUpdateUsers([Number(user.id)], "deactivate").then(reloadUsers).catch(console.error);
                             }}
                             className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors flex items-center gap-3"
                             style={{

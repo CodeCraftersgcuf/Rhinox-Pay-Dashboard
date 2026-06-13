@@ -1,15 +1,24 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import images from "../../constants/images";
-import { getUsers, User } from "../../services/userService";
+import { fetchWalletOverview, fetchWalletUsers } from "../../services/admin";
+import { formatCurrency, formatNumber, mapCountryCode } from "../../utils/adminFormatters";
 
-interface WalletUser extends User {
+interface WalletUser {
+  id: string;
+  name: string;
+  email: string;
   fiatWalletBalance: string;
   cryptoWalletBalance: string;
   primaryFiatWallet: string;
   txFiat: number;
   txCrypto: number;
 }
+
+const mapCurrencyFilter = (currency: string): string | undefined => {
+  if (currency === "USD Dollar") return "USD";
+  return currency;
+};
 
 const WalletManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +27,12 @@ const WalletManagement: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
   const [usersData, setUsersData] = useState<WalletUser[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [overview, setOverview] = useState({
+    activeUsers: 0,
+    totalCryptoBalance: 0,
+    totalFiatBalance: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
@@ -32,64 +47,78 @@ const WalletManagement: React.FC = () => {
   const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
   const itemsPerPage = 5;
 
-  // Mock wallet data based on time range
-  const walletData: Record<string, {
-    totalWallets: string;
-    cryptoWalletBalance: string;
-    fiatWalletBalance: string;
-  }> = {
-    "All Time": {
-      totalWallets: "500",
-      cryptoWalletBalance: "$200",
-      fiatWalletBalance: "$5,000"
-    },
-    "7 Days": {
-      totalWallets: "125",
-      cryptoWalletBalance: "$50",
-      fiatWalletBalance: "$1,250"
-    },
-    "1 month": {
-      totalWallets: "350",
-      cryptoWalletBalance: "$140",
-      fiatWalletBalance: "$3,500"
-    },
-    "1 Year": {
-      totalWallets: "1,500",
-      cryptoWalletBalance: "$600",
-      fiatWalletBalance: "$15,000"
-    },
-    "Custom": {
-      totalWallets: "500",
-      cryptoWalletBalance: "$200",
-      fiatWalletBalance: "$5,000"
-    }
-  };
-
-  const currentWalletData = walletData[selectedTimeRange] || walletData["All Time"];
+  useEffect(() => {
+    const loadOverview = async () => {
+      try {
+        const data = await fetchWalletOverview({
+          range: selectedTimeRange,
+          country: mapCountryCode(selectedCountry),
+        });
+        setOverview({
+          activeUsers: data?.activeUsers || 0,
+          totalCryptoBalance: data?.totalCryptoBalance || 0,
+          totalFiatBalance: data?.totalFiatBalance || 0,
+        });
+      } catch (error) {
+        console.error("Failed to load wallet overview:", error);
+      }
+    };
+    loadOverview();
+  }, [selectedTimeRange, selectedCountry]);
 
   useEffect(() => {
     const loadUsers = async () => {
       setLoading(true);
       try {
-        const users = await getUsers(false);
-        // Transform users to include wallet data
-        const walletUsers: WalletUser[] = users.map((user, index) => ({
-          ...user,
-          fiatWalletBalance: "$20,000",
-          cryptoWalletBalance: "$10,000",
-          primaryFiatWallet: "NGN Wallet",
-          txFiat: 100,
-          txCrypto: 20
-        }));
-        setUsersData(walletUsers);
+        const data = await fetchWalletUsers({
+          page: currentPage,
+          limit: itemsPerPage,
+          range: selectedTimeRange,
+          search: searchQuery,
+          country: mapCountryCode(selectedCountry),
+          currency: mapCurrencyFilter(selectedCurrency),
+        });
+        setUsersData(
+          (data?.items || []).map((item: Record<string, unknown>) => ({
+            id: String(item.userId ?? item.id),
+            name: String(item.name || "N/A"),
+            email: String(item.email || ""),
+            fiatWalletBalance: formatCurrency(item.fiatWalletBalance as number),
+            cryptoWalletBalance: formatCurrency(item.cryptoWalletBalance as number),
+            primaryFiatWallet: item.primaryFiatWallet
+              ? `${String(item.primaryFiatWallet)} Wallet`
+              : "N/A",
+            txFiat: Number(item.transactionCount || 0),
+            txCrypto: 0,
+          }))
+        );
+        setTotalUsers(data?.pagination?.total || 0);
+        if (data?.stats) {
+          setOverview({
+            activeUsers: data.stats.activeUsers || 0,
+            totalCryptoBalance: data.stats.totalCryptoBalance || 0,
+            totalFiatBalance: data.stats.totalFiatBalance || 0,
+          });
+        }
       } catch (error) {
-        console.error('Failed to load users:', error);
+        console.error("Failed to load wallet users:", error);
+        setUsersData([]);
+        setTotalUsers(0);
       } finally {
         setLoading(false);
       }
     };
     loadUsers();
-  }, []);
+  }, [currentPage, searchQuery, selectedTimeRange, selectedCountry, selectedCurrency]);
+
+  const currentWalletData = useMemo(
+    () => ({
+      totalWallets: loading ? "..." : formatNumber(overview.activeUsers),
+      cryptoWalletBalance: loading ? "..." : formatCurrency(overview.totalCryptoBalance),
+      fiatWalletBalance: loading ? "..." : formatCurrency(overview.totalFiatBalance),
+    }),
+    [loading, overview]
+  );
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -110,19 +139,10 @@ const WalletManagement: React.FC = () => {
     };
   }, [showBulkActionDropdown, showCurrencyDropdown, showCountryDropdown]);
 
-  // Filter users based on search query
-  const filteredUsers = usersData.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery);
-    return matchesSearch;
-  });
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayedUsers = filteredUsers.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, Math.ceil(totalUsers / itemsPerPage));
+  const startIndex = totalUsers === 0 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalUsers);
+  const displayedUsers = usersData;
 
   // Handle checkbox selection
   const handleSelectUser = (userId: string) => {
@@ -436,7 +456,7 @@ const WalletManagement: React.FC = () => {
                   {["USD Dollar", "EUR", "GBP", "NGN"].map((currency) => (
                     <button
                       key={currency}
-                      onClick={() => { setSelectedCurrency(currency); setShowCurrencyDropdown(false); }}
+                      onClick={() => { setSelectedCurrency(currency); setShowCurrencyDropdown(false); setCurrentPage(1); }}
                       className="w-full text-left hover:bg-[#2B363E] transition-colors px-4 py-2 text-white"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -486,7 +506,7 @@ const WalletManagement: React.FC = () => {
                   {["All Countries", "Nigeria", "Ghana", "Kenya", "South Africa"].map((country) => (
                     <button
                       key={country}
-                      onClick={() => { setSelectedCountry(country); setShowCountryDropdown(false); }}
+                      onClick={() => { setSelectedCountry(country); setShowCountryDropdown(false); setCurrentPage(1); }}
                       className="w-full text-left hover:bg-[#2B363E] transition-colors px-4 py-2 text-white"
                       style={{
                         fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -946,7 +966,7 @@ const WalletManagement: React.FC = () => {
             fontSize: '14px',
             fontWeight: 400
           }}>
-            Showing {startIndex + 1}-{Math.min(endIndex, filteredUsers.length)} of {filteredUsers.length} Users
+            Showing {totalUsers === 0 ? 0 : startIndex + 1}-{endIndex} of {formatNumber(totalUsers)} Users
           </div>
           <div className="flex items-center gap-2">
             <button

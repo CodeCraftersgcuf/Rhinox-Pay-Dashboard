@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getUsers, User } from "../../../services/userService";
+import { User } from "../../../services/userService";
+import { fetchUserById, fetchUserActivities, bulkUpdateUsers } from "../../../services/admin";
+import { formatDateTime, mapApiUser } from "../../../utils/adminFormatters";
 import images from "../../../constants/images";
 import EditProfileModal from "../../../components/userManagement/EditProfileModal";
 import KYCDetailsModal from "../../../components/userManagement/KYCDetailsModal";
@@ -18,47 +20,52 @@ const UserProfile: React.FC = () => {
   const [selectedActivities, setSelectedActivities] = useState<Set<string>>(new Set());
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showKYCDetailsModal, setShowKYCDetailsModal] = useState(false);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const kebabMenuRef = useRef<HTMLDivElement | null>(null);
   const bulkActionDropdownRef = useRef<HTMLDivElement | null>(null);
 
   const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-  // Load activities from JSON
   useEffect(() => {
-    const loadActivities = async () => {
-      try {
-        const response = await fetch('/data/activitiesData.json');
-        if (!response.ok) {
-          throw new Error('Failed to load activities data');
-        }
-        const data = await response.json();
-        setActivities(data);
-      } catch (error) {
-        console.error('Error loading activities from JSON:', error);
-        // Fallback to empty array if JSON file not found
-        setActivities([]);
-      }
-    };
+    if (!username) return;
 
-    loadActivities();
-  }, []);
-
-  useEffect(() => {
     const loadUser = async () => {
       setLoading(true);
       try {
-        const users = await getUsers(false);
-        const foundUser = users.find(u => u.id === username || u.name.toLowerCase().includes(username?.toLowerCase() || ""));
-        setUser(foundUser || users[0]); // Fallback to first user if not found
+        const data = await fetchUserById(username);
+        setUser(mapApiUser(data) as User);
       } catch (error) {
         console.error('Failed to load user:', error);
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
     loadUser();
-  }, [username]);
+  }, [username, profileRefreshKey]);
+
+  useEffect(() => {
+    if (!username) return;
+
+    const loadActivities = async () => {
+      try {
+        const data = await fetchUserActivities(username, { range: selectedTimeRange, search: searchQuery });
+        setActivities(
+          (data?.items || []).map((item: { id: string | number; activity: string; date: string }) => ({
+            id: String(item.id),
+            activity: item.activity,
+            date: formatDateTime(item.date),
+          }))
+        );
+      } catch (error) {
+        console.error('Failed to load user activities:', error);
+        setActivities([]);
+      }
+    };
+
+    loadActivities();
+  }, [username, selectedTimeRange, searchQuery]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -518,7 +525,7 @@ const UserProfile: React.FC = () => {
                       fontWeight: 400
                     }}
                   >
-                    Nigeria
+                    {user.country || 'N/A'}
                   </p>
                 </div>
                 {/* Row 1 - Column 2 */}
@@ -665,7 +672,7 @@ const UserProfile: React.FC = () => {
                       fontWeight: 400
                     }}
                   >
-                    Today
+                    {user.createdAt ? formatDateTime(user.createdAt) : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -871,7 +878,10 @@ const UserProfile: React.FC = () => {
                         <button
                           onClick={() => {
                             setShowKebabMenu(false);
-                            // Handle block user action
+                            if (!user?.id) return;
+                            bulkUpdateUsers([Number(user.id)], "deactivate")
+                              .then(() => setProfileRefreshKey((k) => k + 1))
+                              .catch(console.error);
                           }}
                           style={{
                             width: '100%',
@@ -1410,12 +1420,15 @@ const UserProfile: React.FC = () => {
         isOpen={showEditProfileModal}
         onClose={() => setShowEditProfileModal(false)}
         user={user}
+        onSuccess={() => setProfileRefreshKey((k) => k + 1)}
       />
 
       {/* KYC Details Modal */}
       <KYCDetailsModal
         isOpen={showKYCDetailsModal}
         onClose={() => setShowKYCDetailsModal(false)}
+        userId={user?.id}
+        onSuccess={() => setProfileRefreshKey((k) => k + 1)}
       />
     </div>
   );

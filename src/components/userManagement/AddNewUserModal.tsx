@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from "react";
 import images from "../../constants/images";
+import { createUser } from "../../services/admin";
 
 interface AddNewUserModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
-const AddNewUserModal: React.FC<AddNewUserModalProps> = ({ isOpen, onClose }) => {
+const AddNewUserModal: React.FC<AddNewUserModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
     country: "",
     firstName: "",
@@ -17,6 +19,8 @@ const AddNewUserModal: React.FC<AddNewUserModalProps> = ({ isOpen, onClose }) =>
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -81,11 +85,33 @@ const AddNewUserModal: React.FC<AddNewUserModalProps> = ({ isOpen, onClose }) =>
     setShowCountryDropdown(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("Form submitted:", formData);
-    onClose();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await createUser({
+        email: formData.email,
+        phone: formData.phoneNumber,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      });
+      onSuccess?.();
+      onClose();
+      setFormData({
+        country: "",
+        firstName: "",
+        lastName: "",
+        email: "",
+        phoneNumber: "",
+        password: "",
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create user");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -574,9 +600,11 @@ const AddNewUserModal: React.FC<AddNewUserModalProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Submit Button */}
+          {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
           <button
             type="submit"
-            className="text-black flex items-center justify-center mt-8"
+            disabled={submitting}
+            className="text-black flex items-center justify-center mt-8 disabled:opacity-50"
             style={{
               width: "174px",
               height: "60px",

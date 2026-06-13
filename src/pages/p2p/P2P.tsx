@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, MoreVertical, Pencil, Search, Trash2, X } from "lucide-react";
 import images from "../../constants/images";
 import SupportChatModal from "../../components/support/SupportChatModal";
 import P2PHeroSection from "../../components/p2p/P2PHeroSection";
 import P2PControlStrip from "../../components/p2p/P2PControlStrip";
+import { fetchP2PAds, fetchP2POrders, fetchP2PStats } from "../../services/admin";
+import { formatDateTime, formatNumber, mapCountryCode, mapCountryName } from "../../utils/adminFormatters";
 
 interface P2PRow {
   id: string;
@@ -22,99 +24,39 @@ interface P2PRow {
 }
 
 const timeRanges = ["All Time", "7 days", "1 month", "1 Year", "Custom"];
+const ITEMS_PER_PAGE = 10;
 
-const rows: P2PRow[] = [
-  {
-    id: "1",
-    username: "Qamardeen Malik",
-    adType: "Buy",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    noOfOrders: "500",
-    vendor: "Adewale Chris",
-    statusColor: "yellow",
-    statusText: "Order Placed",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "2",
-    username: "Qamardeen Malik",
-    adType: "Buy",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    noOfOrders: "500",
-    vendor: "Adewale Chris",
-    statusColor: "yellow",
-    statusText: "Awaiting Payment",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "3",
-    username: "Qamardeen Malik",
-    adType: "Buy",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    noOfOrders: "500",
-    vendor: "Adewale Chris",
-    statusColor: "yellow",
-    statusText: "Awaiting Release",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "4",
-    username: "Qamardeen Malik",
-    adType: "Buy",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    noOfOrders: "500",
-    vendor: "Adewale Chris",
-    statusColor: "green",
-    statusText: "Completed",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-  {
-    id: "5",
-    username: "Qamardeen Malik",
-    adType: "Buy",
-    token: "USDT",
-    country: "Nigeria",
-    qty: "100",
-    amount: "$100",
-    noOfOrders: "500",
-    vendor: "Adewale Chris",
-    statusColor: "green",
-    statusText: "Completed",
-    date: "22/10/25",
-    time: "07:22 AM",
-  },
-];
+const normalizeTimeRange = (range: string) => (range === "7 days" ? "7 Days" : range);
 
-const rowsByTimeRange: Record<string, P2PRow[]> = {
-  "All Time": rows,
-  "7 days": rows.slice(0, 3),
-  "1 month": rows.slice(0, 4),
-  "1 Year": rows,
-  Custom: rows.slice(1, 5),
+const mapOrderStatusLabel = (status: string) => {
+  const labels: Record<string, string> = {
+    pending: "Order Placed",
+    awaiting_payment: "Awaiting Payment",
+    payment_made: "Payment Made",
+    awaiting_coin_release: "Awaiting Release",
+    completed: "Completed",
+    cancelled: "Cancelled",
+    disputed: "Disputed",
+    refunded: "Refunded",
+    expired: "Expired",
+  };
+  return labels[status] || status;
 };
 
-const statsByTimeRange: Record<string, { totalAds: number; buyOrders: number; sellOrders: number }> = {
-  "All Time": { totalAds: 250, buyOrders: 150, sellOrders: 100 },
-  "7 days": { totalAds: 90, buyOrders: 50, sellOrders: 35 },
-  "1 month": { totalAds: 160, buyOrders: 92, sellOrders: 61 },
-  "1 Year": { totalAds: 250, buyOrders: 150, sellOrders: 100 },
-  Custom: { totalAds: 118, buyOrders: 70, sellOrders: 43 },
+const mapOrderStatusFilter = (status: string) => {
+  const map: Record<string, string> = {
+    "Order Placed": "pending",
+    "Awaiting Payment": "awaiting_payment",
+    "Awaiting Release": "awaiting_coin_release",
+    Completed: "completed",
+  };
+  return map[status];
+};
+
+const splitDateTime = (value: string) => {
+  const formatted = formatDateTime(value);
+  const [date, time] = formatted.split(", ");
+  return { date: date || "-", time: time || "-" };
 };
 
 const P2P: React.FC = () => {
@@ -141,8 +83,13 @@ const P2P: React.FC = () => {
   const [selectedAddAccountType, setSelectedAddAccountType] = useState("Select Account type");
   const [showTransactionDetailsModal, setShowTransactionDetailsModal] = useState(false);
   const [selectedTransactionStatus, setSelectedTransactionStatus] = useState<string>("Order Placed");
-  const [activeChatUsername, setActiveChatUsername] = useState<string | null>(null);
+  const [activeChat, setActiveChat] = useState<{ username: string; orderId?: string } | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rows, setRows] = useState<P2PRow[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [loadingRows, setLoadingRows] = useState(false);
+  const [activeStats, setActiveStats] = useState({ totalAds: 0, buyOrders: 0, sellOrders: 0 });
 
   const buyRef = useRef<HTMLDivElement | null>(null);
   const countryRef = useRef<HTMLDivElement | null>(null);
@@ -168,7 +115,8 @@ const P2P: React.FC = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [selectedTimeRange]);
+    setCurrentPage(1);
+  }, [selectedTimeRange, activeDashboardTab, selectedBuy, selectedCountry, selectedStatus, searchText]);
 
   useEffect(() => {
     if (activeDashboardTab === "Orders") {
@@ -180,32 +128,167 @@ const P2P: React.FC = () => {
     setSelectedStatus("All Status");
   }, [activeDashboardTab]);
 
-  const activeRows = rowsByTimeRange[selectedTimeRange] ?? rows;
-  const activeStats = statsByTimeRange[selectedTimeRange] ?? statsByTimeRange["All Time"];
+  const mapAdRow = (ad: {
+    id: number | string;
+    username: string;
+    adType: string;
+    token: string;
+    country?: string | null;
+    qty: number;
+    amount: number;
+    status: string;
+    createdAt: string;
+  }): P2PRow => {
+    const { date, time } = splitDateTime(ad.createdAt);
+    const statusColor = ad.status === "available" ? "green" : "yellow";
+    return {
+      id: String(ad.id),
+      username: ad.username,
+      adType: ad.adType?.charAt(0).toUpperCase() + ad.adType?.slice(1).toLowerCase() as "Buy" | "Sell",
+      token: ad.token,
+      country: mapCountryName(ad.country),
+      qty: formatNumber(ad.qty),
+      amount: `$${formatNumber(ad.amount)}`,
+      noOfOrders: "-",
+      vendor: "-",
+      statusColor,
+      date,
+      time,
+    };
+  };
 
-  const filteredRows = useMemo(
-    () =>
-      activeRows.filter(
-        (row) =>
-          row.username.toLowerCase().includes(searchText.toLowerCase().trim()) &&
-          (activeDashboardTab === "Orders"
-            ? selectedBuy === "All Ad type" ||
-              (selectedBuy === "Buy ad" && row.adType === "Buy") ||
-              (selectedBuy === "Sell Ads" && row.adType === "Sell")
-            : selectedBuy === "All Ad Type" || row.adType === selectedBuy) &&
-          (selectedCountry === "Country" || row.country === selectedCountry) &&
-          (activeDashboardTab === "Orders"
-            ? selectedStatus === "All Status" ||
-              (selectedStatus === "Order Placed" && row.statusText === "Order Placed") ||
-              (selectedStatus === "Awaiting Payment" && row.statusText === "Awaiting Payment") ||
-              (selectedStatus === "Awaiting Release" && row.statusText === "Awaiting Release") ||
-              (selectedStatus === "Completed" && row.statusText === "Completed")
-            : selectedStatus === "All Status" ||
-              (selectedStatus === "Active" && row.statusColor === "green") ||
-              (selectedStatus === "Pending" && row.statusColor === "yellow"))
-      ),
-    [activeRows, searchText, activeDashboardTab, selectedBuy, selectedCountry, selectedStatus]
-  );
+  const mapOrderRow = (order: {
+    id: number | string;
+    buyer: string;
+    vendor: string;
+    type: string;
+    cryptoCurrency: string;
+    fiatCurrency: string;
+    cryptoAmount: number;
+    fiatAmount: number;
+    status: string;
+    createdAt: string;
+  }): P2PRow => {
+    const { date, time } = splitDateTime(order.createdAt);
+    const statusText = mapOrderStatusLabel(order.status);
+    const statusColor = order.status === "completed" ? "green" : "yellow";
+    return {
+      id: String(order.id),
+      username: order.buyer,
+      adType: order.type?.charAt(0).toUpperCase() + order.type?.slice(1).toLowerCase() as "Buy" | "Sell",
+      token: order.cryptoCurrency,
+      country: order.fiatCurrency || "-",
+      qty: formatNumber(order.cryptoAmount),
+      amount: `${formatNumber(order.fiatAmount)} ${order.fiatCurrency || ""}`.trim(),
+      noOfOrders: "-",
+      vendor: order.vendor,
+      statusColor,
+      statusText,
+      date,
+      time,
+    };
+  };
+
+  const loadStats = useCallback(async () => {
+    try {
+      const stats = await fetchP2PStats({ range: normalizeTimeRange(selectedTimeRange) });
+      setActiveStats({
+        totalAds: Number(stats?.ads || 0),
+        buyOrders: Number(stats?.orders || 0),
+        sellOrders: Number(stats?.completedOrders || 0),
+      });
+    } catch (error) {
+      console.error("Failed to load P2P stats:", error);
+      setActiveStats({ totalAds: 0, buyOrders: 0, sellOrders: 0 });
+    }
+  }, [selectedTimeRange]);
+
+  const loadRows = useCallback(async () => {
+    setLoadingRows(true);
+    try {
+      const range = normalizeTimeRange(selectedTimeRange);
+      const commonParams = {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        range,
+        country: mapCountryCode(selectedCountry),
+        search: searchText.trim() || undefined,
+      };
+
+      if (activeDashboardTab === "Orders") {
+        const orderType =
+          selectedBuy === "All Ad type" || selectedBuy === "All Ad Type"
+            ? undefined
+            : selectedBuy === "Buy ad" || selectedBuy === "Buy"
+              ? "buy"
+              : selectedBuy === "Sell Ads" || selectedBuy === "Sell"
+                ? "sell"
+                : undefined;
+        const data = await fetchP2POrders({
+          ...commonParams,
+          status: selectedStatus === "All Status" ? undefined : mapOrderStatusFilter(selectedStatus),
+          adType: orderType,
+        });
+        setRows((data?.items || []).map(mapOrderRow));
+        setTotalItems(data?.pagination?.total || 0);
+      } else {
+        const adType =
+          selectedBuy === "All Ad Type"
+            ? undefined
+            : selectedBuy === "Buy"
+              ? "buy"
+              : selectedBuy === "Sell"
+                ? "sell"
+                : undefined;
+        const status =
+          selectedStatus === "All Status"
+            ? undefined
+            : selectedStatus === "Active"
+              ? "available"
+              : "paused";
+        const data = await fetchP2PAds({
+          ...commonParams,
+          adType,
+          status,
+        });
+        setRows((data?.items || []).map(mapAdRow));
+        setTotalItems(data?.pagination?.total || 0);
+        if (data?.stats) {
+          setActiveStats({
+            totalAds: Number(data.stats.ads || 0),
+            buyOrders: Number(data.stats.orders || 0),
+            sellOrders: Number(data.stats.completedOrders || 0),
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to load P2P data:", error);
+      setRows([]);
+      setTotalItems(0);
+    } finally {
+      setLoadingRows(false);
+    }
+  }, [
+    activeDashboardTab,
+    currentPage,
+    selectedTimeRange,
+    selectedBuy,
+    selectedCountry,
+    selectedStatus,
+    searchText,
+  ]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    loadRows();
+  }, [loadRows]);
+
+  const filteredRows = rows;
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
 
   const allSelected = filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
   const partiallySelected = selectedIds.size > 0 && !allSelected;
@@ -359,7 +442,21 @@ const P2P: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRows.map((row) => (
+                {loadingRows && (
+                  <tr>
+                    <td colSpan={activeDashboardTab === "Orders" ? 11 : 10} className="px-3 py-6 text-center text-white">
+                      Loading...
+                    </td>
+                  </tr>
+                )}
+                {!loadingRows && filteredRows.length === 0 && (
+                  <tr>
+                    <td colSpan={activeDashboardTab === "Orders" ? 11 : 10} className="px-3 py-6 text-center text-white">
+                      No records found
+                    </td>
+                  </tr>
+                )}
+                {!loadingRows && filteredRows.map((row) => (
                   <tr key={row.id} className="border-b border-[#2B363E] text-[10px] text-white">
                     <td className="px-3 py-2.5">
                       <input
@@ -447,7 +544,7 @@ const P2P: React.FC = () => {
                               <button
                                 onClick={() => {
                                   setOpenActionMenuId(null);
-                                  setActiveChatUsername(row.username);
+                                  setActiveChat({ username: row.username, orderId: row.id });
                                 }}
                                 className="block w-full px-2.5 py-2 text-left text-[8px] text-white hover:bg-[#1B2D36]"
                               >
@@ -462,6 +559,39 @@ const P2P: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="flex flex-col gap-3 border-t border-[#2B363E] px-4 py-3 md:flex-row md:items-center md:justify-between">
+            <p className="text-[12px] text-white">
+              {totalItems === 0
+                ? "Showing 0 records"
+                : `Showing ${((currentPage - 1) * ITEMS_PER_PAGE) + 1}-${Math.min(currentPage * ITEMS_PER_PAGE, totalItems)} of ${formatNumber(totalItems)}`}
+            </p>
+            <div className="flex items-center gap-2 text-white">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+              >
+                &lt;
+              </button>
+              {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  onClick={() => setCurrentPage(pageNum)}
+                  className={`h-8 min-w-8 rounded-lg px-2 text-[12px] ${currentPage === pageNum ? "bg-[#1C2630]" : "opacity-70"}`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+              >
+                &gt;
+              </button>
+            </div>
           </div>
         </section>
       </section>
@@ -731,7 +861,7 @@ const P2P: React.FC = () => {
                             onClick={() => {
                               if (order === 2) return;
                               setShowOpenAdModal(false);
-                              setActiveChatUsername("Qamar Malik");
+                              setActiveChat({ username: "User" });
                             }}
                             className="h-[22px] rounded-full bg-[#A9EF45] px-3 text-[7px] text-[#0C141C]"
                           >
@@ -1206,7 +1336,7 @@ const P2P: React.FC = () => {
                     <button
                       onClick={() => {
                         setShowTransactionDetailsModal(false);
-                        setActiveChatUsername("Qamar Malik");
+                        setActiveChat({ username: "User" });
                       }}
                       className="h-[28px] rounded-full bg-[#A9EF45] px-4 text-[10px] text-[#0C141C]"
                     >
@@ -1277,9 +1407,11 @@ const P2P: React.FC = () => {
       )}
 
       <SupportChatModal
-        isOpen={Boolean(activeChatUsername)}
-        onClose={() => setActiveChatUsername(null)}
-        username={activeChatUsername ?? "Qamar Malik"}
+        isOpen={Boolean(activeChat)}
+        onClose={() => setActiveChat(null)}
+        username={activeChat?.username ?? "User"}
+        orderId={activeChat?.orderId}
+        mode="appeal"
       />
     </div>
   );

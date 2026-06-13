@@ -3,17 +3,24 @@ import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import images from "../../constants/images";
 import { getUsers, User } from "../../services/userService";
+import { bulkUpdateUsers } from "../../services/admin";
 
 interface UserManagementTableProps {
     searchQuery: string;
     setSearchQuery: (query: string) => void;
     kycFilter: string;
+    selectedTimeRange?: string;
+    onSelectionChange?: (ids: Set<string>) => void;
+    onUsersChanged?: () => void;
 }
 
 const UserManagementTable: React.FC<UserManagementTableProps> = ({
     searchQuery,
     setSearchQuery,
-    kycFilter
+    kycFilter,
+    selectedTimeRange = "All Time",
+    onSelectionChange,
+    onUsersChanged,
 }) => {
     const navigate = useNavigate();
     const [currentPage, setCurrentPage] = useState(1);
@@ -21,27 +28,59 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
     const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
     const [usersData, setUsersData] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    const [totalUsers, setTotalUsers] = useState(0);
     const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
     const buttonRefs = useRef<Record<string, HTMLButtonElement | null>>({});
     const [dropdownPositions, setDropdownPositions] = useState<Record<string, { top: number; right: number }>>({});
+    const itemsPerPage = 5;
 
-    // Load users data from JSON/API
+    // Load users data from API
     useEffect(() => {
         const loadUsers = async () => {
             setLoading(true);
             try {
-                // Set useAPI to true if you want to fetch from API instead of JSON
-                const users = await getUsers(false); // false = use JSON, true = use API
-                setUsersData(users);
+                const data = await getUsers({
+                    page: currentPage,
+                    limit: itemsPerPage,
+                    search: searchQuery,
+                    kycStatus: kycFilter,
+                    range: selectedTimeRange,
+                });
+                setUsersData(
+                  (data.items || []).map((user: User) => ({
+                    ...user,
+                    id: String(user.id),
+                  }))
+                );
+                setTotalUsers(data.pagination?.total || 0);
             } catch (error) {
                 console.error('Failed to load users:', error);
+                setUsersData([]);
             } finally {
                 setLoading(false);
             }
         };
 
         loadUsers();
-    }, []);
+    }, [currentPage, searchQuery, kycFilter, selectedTimeRange]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, kycFilter, selectedTimeRange]);
+
+    useEffect(() => {
+        onSelectionChange?.(selectedUsers);
+    }, [selectedUsers, onSelectionChange]);
+
+    const handleBlockUser = async (userId: string) => {
+        setOpenDropdown(null);
+        try {
+            await bulkUpdateUsers([Number(userId)], "deactivate");
+            onUsersChanged?.();
+        } catch (error) {
+            console.error("Failed to block user:", error);
+        }
+    };
 
     // Close dropdown on outside click
     useEffect(() => {
@@ -92,23 +131,10 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
         };
     }, [openDropdown]);
 
-    const itemsPerPage = 5;
-    const totalUsers = 200;
-
-    // Filter users based on search query and KYC status
-    const filteredUsers = usersData.filter(user => {
-        const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.phone.includes(searchQuery);
-        const matchesKyc = kycFilter === "All" || user.kycStatus === kycFilter.toLowerCase();
-        return matchesSearch && matchesKyc;
-    });
-
-    // Calculate pagination
-    const totalPages = Math.ceil(totalUsers / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    const displayedUsers = filteredUsers.slice(0, itemsPerPage);
+    const totalPages = Math.max(1, Math.ceil(totalUsers / itemsPerPage));
+    const startIndex = totalUsers === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endIndex = Math.min(currentPage * itemsPerPage, totalUsers);
+    const displayedUsers = usersData;
 
     // Handle checkbox selection
     const handleSelectUser = (userId: string) => {
@@ -558,10 +584,7 @@ const UserManagementTable: React.FC<UserManagementTableProps> = ({
                                                     }}
                                                 >
                                                     <button
-                                                        onClick={() => {
-                                                            setOpenDropdown(null);
-                                                            // Handle block user action
-                                                        }}
+                                                        onClick={() => handleBlockUser(user.id)}
                                                         className="w-full text-left text-sm text-white hover:bg-[#2B363E] transition-colors flex items-center gap-3"
                                                         style={{
                                                             fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',

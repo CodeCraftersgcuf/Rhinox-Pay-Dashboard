@@ -1,7 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Gift, Search } from "lucide-react";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
+import {
+  fetchRewardClaims,
+  fetchRewardRules,
+} from "../../services/admin";
+import { formatCurrency, mapCountryName } from "../../utils/adminFormatters";
 
 interface RewardRow {
   id: string;
@@ -14,46 +19,11 @@ interface RewardRow {
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-const allTimeRows: RewardRow[] = [
-  { id: "1", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$200", lastReward: "1GB Data - Birthday Gift" },
-  { id: "2", username: "Qamardeen Malik", tier: "Silver", country: "Nigeria", totalReward: "$200", lastReward: "1GB Data - Birthday Gift" },
-  { id: "3", username: "Qamardeen Malik", tier: "Bronze", country: "Nigeria", totalReward: "$200", lastReward: "1GB Data - Birthday Gift" },
-  { id: "4", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$200", lastReward: "1GB Data - Birthday Gift" },
-  { id: "5", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$200", lastReward: "1GB Data - Birthday Gift" },
-];
-
-const rowsByTimeRange: Record<string, RewardRow[]> = {
-  "All Time": allTimeRows,
-  "7 Days": [
-    { id: "7-1", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$120", lastReward: "Airtime Reward - Weekly Promo" },
-    { id: "7-2", username: "Qamardeen Malik", tier: "Silver", country: "Nigeria", totalReward: "$90", lastReward: "Referral Bonus - Weekly Promo" },
-    { id: "7-3", username: "Qamardeen Malik", tier: "Bronze", country: "Nigeria", totalReward: "$60", lastReward: "1GB Data - Weekly Promo" },
-  ],
-  "1 month": [
-    { id: "m-1", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$420", lastReward: "Airtime Reward - Monthly Campaign" },
-    { id: "m-2", username: "Qamardeen Malik", tier: "Silver", country: "Nigeria", totalReward: "$330", lastReward: "Referral Bonus - Monthly Campaign" },
-    { id: "m-3", username: "Qamardeen Malik", tier: "Bronze", country: "Nigeria", totalReward: "$280", lastReward: "1GB Data - Monthly Campaign" },
-    { id: "m-4", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$410", lastReward: "Cashback Bonus - Monthly Campaign" },
-  ],
-  "1 Year": [
-    { id: "y-1", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$1,200", lastReward: "Year-End Reward" },
-    { id: "y-2", username: "Qamardeen Malik", tier: "Silver", country: "Nigeria", totalReward: "$970", lastReward: "Loyalty Reward" },
-    { id: "y-3", username: "Qamardeen Malik", tier: "Bronze", country: "Nigeria", totalReward: "$780", lastReward: "Airtime Reward" },
-    { id: "y-4", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$1,060", lastReward: "Birthday Gift" },
-    { id: "y-5", username: "Qamardeen Malik", tier: "Silver", country: "Nigeria", totalReward: "$820", lastReward: "Referral Bonus" },
-  ],
-  Custom: [
-    { id: "c-1", username: "Qamardeen Malik", tier: "Gold", country: "Nigeria", totalReward: "$150", lastReward: "Custom Reward Campaign" },
-    { id: "c-2", username: "Qamardeen Malik", tier: "Bronze", country: "Nigeria", totalReward: "$80", lastReward: "Custom Reward Campaign" },
-  ],
-};
-
-const statsByTimeRange: Record<string, { totalRewards: string; goldUsers: string; silverUsers: string; bronzeUsers: string }> = {
-  "All Time": { totalRewards: "$2,000", goldUsers: "200", silverUsers: "200", bronzeUsers: "200" },
-  "7 Days": { totalRewards: "$1,120", goldUsers: "84", silverUsers: "72", bronzeUsers: "55" },
-  "1 month": { totalRewards: "$1,480", goldUsers: "120", silverUsers: "96", bronzeUsers: "76" },
-  "1 Year": { totalRewards: "$3,950", goldUsers: "320", silverUsers: "280", bronzeUsers: "230" },
-  Custom: { totalRewards: "$780", goldUsers: "54", silverUsers: "33", bronzeUsers: "28" },
+const formatTier = (tier: string): RewardRow["tier"] => {
+  const value = tier?.toLowerCase();
+  if (value === "gold") return "Gold";
+  if (value === "silver") return "Silver";
+  return "Bronze";
 };
 
 const filterButtonStyle: React.CSSProperties = {
@@ -78,11 +48,64 @@ const Rewards: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const countryDropdownRef = useRef<HTMLDivElement | null>(null);
   const tierDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [rows, setRows] = useState<RewardRow[]>([]);
+  const [rewardStats, setRewardStats] = useState({
+    totalRewards: "$0",
+    goldUsers: "0",
+    silverUsers: "0",
+    bronzeUsers: "0",
+  });
+  const [loading, setLoading] = useState(true);
 
   const countryOptions = ["Country", "Nigeria", "Ghana", "Kenya", "South Africa"];
   const tierOptions = ["Tier", "Gold", "Silver", "Bronze"];
-  const activeRows = rowsByTimeRange[selectedTimeRange] ?? allTimeRows;
-  const activeStats = statsByTimeRange[selectedTimeRange] ?? statsByTimeRange["All Time"];
+
+  const loadRewards = async () => {
+    setLoading(true);
+    try {
+      const [claimsData] = await Promise.all([
+        fetchRewardClaims({
+          range: selectedTimeRange,
+          tier: selectedTier,
+          search: searchText.trim() || undefined,
+          country: selectedCountry,
+          limit: 100,
+        }),
+        fetchRewardRules({ limit: 100 }),
+      ]);
+
+      const claimRows = (claimsData?.items || []).map((row: any) => ({
+        id: String(row.id),
+        username: row.username,
+        tier: formatTier(row.tier),
+        country: mapCountryName(row.country),
+        totalReward: formatCurrency(row.totalReward),
+        lastReward: row.lastReward || "-",
+      }));
+      setRows(claimRows);
+
+      const stats = claimsData?.stats || {};
+      const totalValue = claimRows.reduce(
+        (sum: number, row: RewardRow) => sum + Number(String(row.totalReward).replace(/[^0-9.-]+/g, "") || 0),
+        0
+      );
+      setRewardStats({
+        totalRewards: formatCurrency(totalValue || stats.totalClaims || 0),
+        goldUsers: String(stats.gold || 0),
+        silverUsers: String(stats.silver || 0),
+        bronzeUsers: String(stats.bronze || 0),
+      });
+    } catch (error) {
+      console.error("Failed to load rewards:", error);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRewards();
+  }, [selectedTimeRange, selectedTier, searchText, selectedCountry]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -102,15 +125,7 @@ const Rewards: React.FC = () => {
     };
   }, []);
 
-  const filteredRows = useMemo(
-    () =>
-      activeRows.filter((row) =>
-        row.username.toLowerCase().includes(searchText.toLowerCase().trim()) &&
-        (selectedCountry === "Country" || row.country === selectedCountry) &&
-        (selectedTier === "Tier" || row.tier === selectedTier)
-      ),
-    [activeRows, searchText, selectedCountry, selectedTier]
-  );
+  const filteredRows = rows;
 
   const allSelected =
     filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
@@ -201,10 +216,10 @@ const Rewards: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           {[
-            { label: "Total Rewards", value: activeStats.totalRewards, bg: "linear-gradient(119.08deg, #4880C0 0%, #1B589E 96.9%)" },
-            { label: "Gold Users", value: activeStats.goldUsers, bg: "#D9A43D" },
-            { label: "Silver Users", value: activeStats.silverUsers, bg: "rgba(202, 205, 210, 0.85)" },
-            { label: "Bronze Users", value: activeStats.bronzeUsers, bg: "#B99659" },
+            { label: "Total Rewards", value: loading ? "..." : rewardStats.totalRewards, bg: "linear-gradient(119.08deg, #4880C0 0%, #1B589E 96.9%)" },
+            { label: "Gold Users", value: loading ? "..." : rewardStats.goldUsers, bg: "#D9A43D" },
+            { label: "Silver Users", value: loading ? "..." : rewardStats.silverUsers, bg: "rgba(202, 205, 210, 0.85)" },
+            { label: "Bronze Users", value: loading ? "..." : rewardStats.bronzeUsers, bg: "#B99659" },
           ].map((card) => (
             <div
               key={card.label}
@@ -370,7 +385,16 @@ const Rewards: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
+              {loading ? (
+                <tr className="border-b border-[#2B363E] text-[12px] text-[#CFD7DD]">
+                  <td colSpan={6} className="px-4 py-6 text-center">Loading rewards...</td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr className="border-b border-[#2B363E] text-[12px] text-[#CFD7DD]">
+                  <td colSpan={6} className="px-4 py-6 text-center">No reward claims found</td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
                 <tr key={row.id} className="border-b border-[#2B363E] text-[12px] text-white">
                   <td className="px-4 py-3">
                     <input
@@ -402,7 +426,7 @@ const Rewards: React.FC = () => {
                   <td className="px-4 py-3 text-[#CFD7DD]">{row.totalReward}</td>
                   <td className="px-4 py-3 text-[#CFD7DD]">{row.lastReward}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

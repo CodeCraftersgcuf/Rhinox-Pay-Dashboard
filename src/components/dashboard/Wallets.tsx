@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import images from "../../constants/images";
+import { fetchDashboardWallets } from "../../services/admin";
+import { formatNumber } from "../../utils/adminFormatters";
 
 interface WalletsProps {
   selectedTimeRange?: string;
@@ -12,53 +14,39 @@ const Wallets: React.FC<WalletsProps> = ({ selectedTimeRange = "All Time" }) => 
   const [selectedCurrency, setSelectedCurrency] = useState("NGN");
   const [isCurrencyDropdownOpen, setIsCurrencyDropdownOpen] = useState(false);
 
-  const currencies = ["NGN", "USD", "EUR", "GBP", "BTC", "ETH"];
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const [walletBalances, setWalletBalances] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
 
-  // Mock balance data based on currency, filter, and tab
-  const balanceData: Record<string, Record<string, Record<string, string>>> = {
-    "User Wallets": {
-      "Fiat": {
-        "NGN": "150,000.00",
-        "USD": "1,200.00",
-        "EUR": "1,100.00",
-        "GBP": "950.00",
-        "BTC": "0.025",
-        "ETH": "0.45"
-      },
-      "Crypto": {
-        "NGN": "2,500,000.00",
-        "USD": "18,500.00",
-        "EUR": "17,200.00",
-        "GBP": "14,800.00",
-        "BTC": "0.38",
-        "ETH": "6.75"
+  useEffect(() => {
+    const loadWallets = async () => {
+      setLoading(true);
+      try {
+        const walletType = selectedFilter === 'Crypto' ? 'crypto' : 'fiat';
+        const data = await fetchDashboardWallets({ range: selectedTimeRange, walletType });
+        const balances: Record<string, number> = {};
+        (Array.isArray(data) ? data : []).forEach((item: { currency: string; balance: number }) => {
+          balances[item.currency] = Number(item.balance || 0);
+        });
+        setWalletBalances(balances);
+        if (!balances[selectedCurrency] && Object.keys(balances).length > 0) {
+          setSelectedCurrency(Object.keys(balances)[0]);
+        }
+      } catch (error) {
+        console.error('Failed to load wallet aggregates:', error);
+        setWalletBalances({});
+      } finally {
+        setLoading(false);
       }
-    },
-    "Master Wallets": {
-      "Fiat": {
-        "NGN": "5,000,000.00",
-        "USD": "40,000.00",
-        "EUR": "37,000.00",
-        "GBP": "32,000.00",
-        "BTC": "0.85",
-        "ETH": "15.20"
-      },
-      "Crypto": {
-        "NGN": "15,000,000.00",
-        "USD": "120,000.00",
-        "EUR": "111,000.00",
-        "GBP": "96,000.00",
-        "BTC": "2.50",
-        "ETH": "45.00"
-      }
-    }
-  };
+    };
+    loadWallets();
+  }, [selectedTimeRange, selectedFilter]);
 
-  // Get current balance based on selections
-  const currentBalance = balanceData[activeTab]?.[selectedFilter]?.[selectedCurrency] || "0.00";
+  const currencies = Object.keys(walletBalances).length
+    ? Object.keys(walletBalances)
+    : ["NGN", "USD", "EUR", "GBP", "BTC", "ETH"];
 
   // Currency symbols
   const currencySymbols: Record<string, string> = {
@@ -71,6 +59,9 @@ const Wallets: React.FC<WalletsProps> = ({ selectedTimeRange = "All Time" }) => 
   };
 
   const currencySymbol = currencySymbols[selectedCurrency] || "$";
+  const currentBalance = loading
+    ? "..."
+    : formatNumber(walletBalances[selectedCurrency] || 0);
 
   // Function to calculate dropdown position
   const calculateDropdownPosition = () => {

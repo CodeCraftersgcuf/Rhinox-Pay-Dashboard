@@ -16,6 +16,8 @@ interface AdminTableProps {
   searchText: string;
   onSearch: (value: string) => void;
   onViewDetails: (admin: AdminUser) => void;
+  onToggleStatus?: (admin: AdminUser) => void;
+  onDelete?: (admin: AdminUser) => void;
 }
 
 const AdminTable: React.FC<AdminTableProps> = ({
@@ -23,6 +25,8 @@ const AdminTable: React.FC<AdminTableProps> = ({
   searchText,
   onSearch,
   onViewDetails,
+  onToggleStatus,
+  onDelete,
 }) => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selectAllRef = useRef<HTMLInputElement | null>(null);
@@ -160,10 +164,18 @@ const AdminTable: React.FC<AdminTableProps> = ({
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <button className="h-8 w-8 rounded-md border border-[#26333F] text-[#C8D0D6] bg-[#0C1620]">
+                  <button
+                    onClick={() => onToggleStatus?.(admin)}
+                    className="h-8 w-8 rounded-md border border-[#26333F] text-[#C8D0D6] bg-[#0C1620]"
+                    title="Toggle status"
+                  >
                     <Pencil size={14} className="mx-auto" />
                   </button>
-                  <button className="h-8 w-8 rounded-md border border-[#26333F] text-[#E10405] bg-[#0C1620]">
+                  <button
+                    onClick={() => onDelete?.(admin)}
+                    className="h-8 w-8 rounded-md border border-[#26333F] text-[#E10405] bg-[#0C1620]"
+                    title="Deactivate admin"
+                  >
                     <Trash2 size={14} className="mx-auto" />
                   </button>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
@@ -6,69 +6,32 @@ import AdminStatsCards from "../../components/setting/AdminStatsCards";
 import AdminFilters from "../../components/setting/AdminFilters";
 import AdminTable, { type AdminUser } from "../../components/setting/AdminTable";
 import AddAdminModal from "../../components/setting/AddAdminModal";
+import { fetchStaff, updateStaff, deleteStaff } from "../../services/admin";
+import { formatDateTime } from "../../utils/adminFormatters";
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 const settingTabs = ["General", "Admin Management"] as const;
 
-const allTimeAdmins: AdminUser[] = [
-  {
-    id: "1",
-    username: "Qamardeen Malik",
-    role: "Agent",
-    country: "Nigeria",
-    status: "Active",
-    date: "22/10/25 07:22 AM",
-  },
-  {
-    id: "2",
-    username: "Qamardeen Malik",
-    role: "Agent",
-    country: "Nigeria",
-    status: "Inactive",
-    date: "22/10/25 07:22 AM",
-  },
-  {
-    id: "3",
-    username: "Qamardeen Malik",
-    role: "Agent",
-    country: "Nigeria",
-    status: "Active",
-    date: "22/10/25 07:22 AM",
-  },
-  {
-    id: "4",
-    username: "Qamardeen Malik",
-    role: "Agent",
-    country: "Nigeria",
-    status: "Active",
-    date: "22/10/25 07:22 AM",
-  },
-  {
-    id: "5",
-    username: "Qamardeen Malik",
-    role: "Agent",
-    country: "Nigeria",
-    status: "Active",
-    date: "22/10/25 07:22 AM",
-  },
-];
+const countryLabels: Record<string, string> = {
+  NG: "Nigeria",
+  GH: "Ghana",
+  KE: "Kenya",
+  ZA: "South Africa",
+  UG: "Uganda",
+  BW: "Botswana",
+  TZ: "Tanzania",
+};
 
-const adminsByTimeRange: Record<string, AdminUser[]> = {
-  "All Time": allTimeAdmins,
-  "7 Days": allTimeAdmins.slice(0, 3),
-  "1 month": allTimeAdmins.slice(0, 4),
-  "1 Year": [
-    ...allTimeAdmins,
-    {
-      id: "6",
-      username: "Qamardeen Malik",
-      role: "Agent",
-      country: "Nigeria",
-      status: "Active",
-      date: "22/10/25 07:22 AM",
-    },
-  ],
-  Custom: allTimeAdmins.slice(0, 2),
+const mapStaffToAdmin = (staff: Record<string, unknown>): AdminUser => {
+  const countryCode = staff.country ? String(staff.country) : "";
+  return {
+    id: String(staff.id),
+    username: String(staff.username || "N/A"),
+    role: String(staff.role || "-"),
+    country: countryLabels[countryCode] || countryCode || "-",
+    status: staff.status === "active" ? "Active" : "Inactive",
+    date: formatDateTime((staff.date || staff.createdAt) as string),
+  };
 };
 
 const Setting: React.FC = () => {
@@ -80,21 +43,62 @@ const Setting: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ total: 0, active: 0, inactive: 0 });
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const currentAdmins = adminsByTimeRange[selectedTimeRange] ?? allTimeAdmins;
-  const totalAdmins = currentAdmins.length;
-  const activeAdmins = currentAdmins.filter((admin) => admin.status === "Active").length;
-  const inactiveAdmins = totalAdmins - activeAdmins;
+  useEffect(() => {
+    if (activeTab !== "Admin Management") return;
 
-  const filteredAdmins = useMemo(
-    () =>
-      currentAdmins.filter((admin) =>
-        admin.username.toLowerCase().includes(searchText.toLowerCase().trim()) &&
-        (selectedCountry === "All" || admin.country === selectedCountry) &&
-        (selectedStatus === "All" || admin.status === selectedStatus)
-      ),
-    [currentAdmins, searchText, selectedCountry, selectedStatus]
-  );
+    const loadStats = async () => {
+      try {
+        const [all, active, inactive] = await Promise.all([
+          fetchStaff({ range: selectedTimeRange, limit: 1 }),
+          fetchStaff({ range: selectedTimeRange, status: "Active", limit: 1 }),
+          fetchStaff({ range: selectedTimeRange, status: "Inactive", limit: 1 }),
+        ]);
+        setStats({
+          total: all?.pagination?.total || 0,
+          active: active?.pagination?.total || 0,
+          inactive: inactive?.pagination?.total || 0,
+        });
+      } catch (error) {
+        console.error("Failed to load admin stats:", error);
+      }
+    };
+
+    loadStats();
+  }, [activeTab, selectedTimeRange, refreshKey]);
+
+  useEffect(() => {
+    if (activeTab !== "Admin Management") return;
+
+    const loadAdmins = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchStaff({
+          range: selectedTimeRange,
+          search: searchText,
+          country: selectedCountry,
+          status: selectedStatus,
+          limit: 50,
+        });
+        setAdmins((data?.items || []).map(mapStaffToAdmin));
+      } catch (error) {
+        console.error("Failed to load admins:", error);
+        setAdmins([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAdmins();
+  }, [activeTab, selectedTimeRange, searchText, selectedCountry, selectedStatus, refreshKey]);
+
+  const handleAdminCreated = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   return (
     <div className="space-y-5">
@@ -145,9 +149,9 @@ const Setting: React.FC = () => {
 
             <AdminStatsCards
               stats={[
-                { label: "Total Admin", value: totalAdmins },
-                { label: "Currently Active", value: activeAdmins },
-                { label: "Inactive", value: inactiveAdmins },
+                { label: "Total Admin", value: stats.total },
+                { label: "Currently Active", value: stats.active },
+                { label: "Inactive", value: stats.inactive },
               ]}
               icon={images.UsersThree}
             />
@@ -160,15 +164,39 @@ const Setting: React.FC = () => {
             onCountryChange={setSelectedCountry}
             onStatusChange={setSelectedStatus}
           />
-          <AdminTable
-            rows={filteredAdmins}
-            searchText={searchText}
-            onSearch={setSearchText}
-            onViewDetails={(admin) => navigate(`/settings/admin/${admin.id}`)}
-          />
+          {loading ? (
+            <div className="py-8 text-center text-sm text-[#7F8B95]">Loading admins...</div>
+          ) : (
+            <AdminTable
+              rows={admins}
+              searchText={searchText}
+              onSearch={setSearchText}
+              onViewDetails={(admin) => navigate(`/settings/admin/${admin.id}`)}
+              onToggleStatus={async (admin) => {
+                try {
+                  await updateStaff(admin.id, {
+                    status: admin.status === "Active" ? "inactive" : "active",
+                  });
+                  setRefreshKey((k) => k + 1);
+                } catch (error) {
+                  console.error("Failed to update admin status:", error);
+                }
+              }}
+              onDelete={async (admin) => {
+                if (!window.confirm(`Deactivate admin ${admin.username}?`)) return;
+                try {
+                  await deleteStaff(admin.id);
+                  setRefreshKey((k) => k + 1);
+                } catch (error) {
+                  console.error("Failed to deactivate admin:", error);
+                }
+              }}
+            />
+          )}
           <AddAdminModal
             isOpen={showAddAdminModal}
             onClose={() => setShowAddAdminModal(false)}
+            onSuccess={handleAdminCreated}
           />
         </>
       ) : (

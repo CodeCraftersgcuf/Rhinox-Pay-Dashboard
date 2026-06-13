@@ -1,5 +1,13 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import images from "../../constants/images";
+import {
+  createFee,
+  fetchExchangeRates,
+  fetchFees,
+  setExchangeRate,
+  updateFee,
+} from "../../services/admin";
+import { formatNumber, mapCountryName } from "../../utils/adminFormatters";
 
 interface ExchangeRate {
   id: string;
@@ -9,12 +17,27 @@ interface ExchangeRate {
   rhinoxRate: string;
   percentage: string;
   isIncrease: boolean;
+  rawMarketRate: number;
+  rawRhinoxRate: number;
+  fromCode: string;
+  toCode: string;
+}
+
+interface FeeRow {
+  id: string;
+  category: string;
+  serviceType: string;
+  subType: string;
+  fixedCommission: string;
+  commission: string;
+  rawValue: number;
+  feeType: string;
 }
 
 const Rates: React.FC = () => {
   const [activeTab, setActiveTab] = useState<"Rates" | "Fees">("Rates");
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, _setSearchQuery] = useState("");
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
   const [showMainCurrencyDropdown, setShowMainCurrencyDropdown] = useState(false);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
@@ -33,12 +56,26 @@ const Rates: React.FC = () => {
   const [selectedFeeSubType, setSelectedFeeSubType] = useState("All");
   const [feeSearch, setFeeSearch] = useState("");
   const [ratePercentage, setRatePercentage] = useState("");
-  const [selectedMainCurrency, setSelectedMainCurrency] = useState("Nigeria (NGN)");
+  const [selectedMainCurrency, _setSelectedMainCurrency] = useState("Nigeria (NGN)");
   const [selectedFromCurrency, setSelectedFromCurrency] = useState("Nigeria");
   const [selectedToCurrency, setSelectedToCurrency] = useState("Ghana");
   const [selectedRates, setSelectedRates] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
+  const [feeCurrentPage, setFeeCurrentPage] = useState(1);
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRate[]>([]);
+  const [feeRows, setFeeRows] = useState<FeeRow[]>([]);
+  const [ratesTotal, setRatesTotal] = useState(0);
+  const [feesTotal, setFeesTotal] = useState(0);
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [feesLoading, setFeesLoading] = useState(false);
+  const [flatRatePercent, setFlatRatePercent] = useState("5");
+  const [editingFee, setEditingFee] = useState<FeeRow | null>(null);
+  const [feeFixedValue, setFeeFixedValue] = useState("");
+  const [feeCommissionValue, setFeeCommissionValue] = useState("");
+  const [savingRate, setSavingRate] = useState(false);
+  const [savingFee, setSavingFee] = useState(false);
   const itemsPerPage = 6;
+  const feeItemsPerPage = 5;
 
   const bulkActionDropdownRef = useRef<HTMLDivElement>(null);
   const mainCurrencyDropdownRef = useRef<HTMLDivElement>(null);
@@ -62,71 +99,6 @@ const Rates: React.FC = () => {
     { name: "Uganda", code: "UGX", symbol: "Ush", flag: images.flag7, balance: "Ush200,000" },
   ];
 
-  const exchangeRates: ExchangeRate[] = [
-    {
-      id: "1",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "Ghana (GHC)",
-      marketRate: "N1 = c0.0073",
-      rhinoxRate: "N1 = c0.0093",
-      percentage: "5% increase",
-      isIncrease: true,
-    },
-    {
-      id: "2",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "South Africa (ZAR)",
-      marketRate: "N1 = R0.023",
-      rhinoxRate: "N1 = R0.023",
-      percentage: "5% increase",
-      isIncrease: true,
-    },
-    {
-      id: "3",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "Kenya (KSH)",
-      marketRate: "N1 = Ksh20.22",
-      rhinoxRate: "N1 = Ksh20.22",
-      percentage: "5% decrease",
-      isIncrease: false,
-    },
-    {
-      id: "4",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "Botswana (BWP)",
-      marketRate: "N1 = P2,000",
-      rhinoxRate: "N1 = P2,000",
-      percentage: "5% increase",
-      isIncrease: true,
-    },
-    {
-      id: "5",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "Uganda (UGX)",
-      marketRate: "N1 = Ush2.234",
-      rhinoxRate: "N1 = Ush2.234",
-      percentage: "5% increase",
-      isIncrease: true,
-    },
-    {
-      id: "6",
-      mainCurrency: "Nigeria (NGN)",
-      otherCurrency: "Tanzania (TZS)",
-      marketRate: "N1 = Tsh1,500",
-      rhinoxRate: "N1 = Tsh1,575",
-      percentage: "5% increase",
-      isIncrease: true,
-    },
-  ];
-
-  const feeRows = [
-    { id: "f1", category: "Fiat", serviceType: "Fiat - Send", subType: "Bank Transfer", fixedCommission: "-", commission: "10%" },
-    { id: "f2", category: "Fiat", serviceType: "Fiat - Fund", subType: "Crypto", fixedCommission: "-", commission: "10%" },
-    { id: "f3", category: "Fiat", serviceType: "Fiat - Convert", subType: "Bank Transfer", fixedCommission: "-", commission: "10%" },
-    { id: "f4", category: "Crypto", serviceType: "Crypto - Send", subType: "Wallet Address", fixedCommission: "-", commission: "10%" },
-    { id: "f5", category: "Crypto", serviceType: "Crypto - Receive", subType: "Rhinox ID", fixedCommission: "$2", commission: "10%" },
-  ];
-
   const fiatServiceTypeSubTypeMap: Record<string, string[]> = {
     Send: ["Bank Transfer", "Rhinox Pay ID", "Mobile Money"],
     Fund: ["Bank Transfer", "Crypto", "Conversion", "Mobile Money"],
@@ -135,16 +107,134 @@ const Rates: React.FC = () => {
     "Bill Payments": ["Airtime", "Data Recharge", "Electricity", "Cable TV", "Betting"],
   };
 
-  const filteredRates = exchangeRates.filter((rate) =>
-    rate.mainCurrency.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    rate.otherCurrency.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getCurrencyMeta = (code: string) =>
+    currencies.find((c) => c.code.toUpperCase() === code.toUpperCase());
 
-  const totalPages = Math.ceil(filteredRates.length / itemsPerPage);
-  const displayedRates = filteredRates.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  const formatRatePair = (fromCode: string, toCode: string, rate: number) => {
+    const from = getCurrencyMeta(fromCode);
+    const to = getCurrencyMeta(toCode);
+    const fromSymbol = from?.symbol || fromCode;
+    const toSymbol = to?.symbol || toCode;
+    return `${fromSymbol}1 = ${toSymbol}${formatNumber(rate)}`;
+  };
+
+  const mapApiRate = (rate: {
+    id: number | string;
+    mainCurrency: string;
+    otherCurrency: string;
+    marketRate: number;
+    rhinoxRate: number;
+  }): ExchangeRate => {
+    void getCurrencyMeta(rate.mainCurrency);
+    void getCurrencyMeta(rate.otherCurrency);
+    const market = Number(rate.marketRate) || 0;
+    const rhinox = Number(rate.rhinoxRate) || 0;
+    const pctChange = market ? ((rhinox - market) / market) * 100 : 0;
+    const isIncrease = pctChange >= 0;
+    return {
+      id: String(rate.id),
+      mainCurrency: `${mapCountryName(rate.mainCurrency)} (${rate.mainCurrency})`,
+      otherCurrency: `${mapCountryName(rate.otherCurrency)} (${rate.otherCurrency})`,
+      marketRate: formatRatePair(rate.mainCurrency, rate.otherCurrency, market),
+      rhinoxRate: formatRatePair(rate.mainCurrency, rate.otherCurrency, rhinox),
+      percentage: `${formatNumber(Math.abs(pctChange))}% ${isIncrease ? "increase" : "decrease"}`,
+      isIncrease,
+      rawMarketRate: market,
+      rawRhinoxRate: rhinox,
+      fromCode: rate.mainCurrency,
+      toCode: rate.otherCurrency,
+    };
+  };
+
+  const mapApiFee = (fee: {
+    id: number | string;
+    walletType: string;
+    serviceType: string;
+    subType?: string | null;
+    feeType: string;
+    value: number | string;
+  }): FeeRow => {
+    const value = Number(fee.value) || 0;
+    const category = fee.walletType?.charAt(0).toUpperCase() + fee.walletType?.slice(1).toLowerCase();
+    const isPercentage = fee.feeType === "percentage";
+    return {
+      id: String(fee.id),
+      category,
+      serviceType: `${category} - ${fee.serviceType}`,
+      subType: fee.subType || "-",
+      fixedCommission: isPercentage ? "-" : `$${formatNumber(value)}`,
+      commission: isPercentage ? `${formatNumber(value)}%` : "-",
+      rawValue: value,
+      feeType: fee.feeType,
+    };
+  };
+
+  const getCurrencyCode = (name: string) => currencies.find((c) => c.name === name)?.code || name;
+
+  const loadRates = useCallback(async () => {
+    setRatesLoading(true);
+    try {
+      const mainCode = getCurrencyCode(selectedMainCurrency.split(" (")[0] || selectedMainCurrency);
+      const data = await fetchExchangeRates({
+        page: currentPage,
+        limit: itemsPerPage,
+        range: selectedTimeRange,
+        search: searchQuery || mainCode,
+      });
+      const items = (data?.items || []).map(mapApiRate);
+      setExchangeRates(items);
+      setRatesTotal(data?.pagination?.total || 0);
+    } catch (error) {
+      console.error("Failed to load exchange rates:", error);
+      setExchangeRates([]);
+      setRatesTotal(0);
+    } finally {
+      setRatesLoading(false);
+    }
+  }, [currentPage, selectedTimeRange, searchQuery, selectedMainCurrency]);
+
+  const loadFees = useCallback(async () => {
+    setFeesLoading(true);
+    try {
+      const data = await fetchFees({
+        page: feeCurrentPage,
+        limit: feeItemsPerPage,
+        walletType: selectedFeeCategory,
+        serviceType: selectedFeeServiceType === "All" ? undefined : selectedFeeServiceType,
+        subType: selectedFeeSubType === "All" ? undefined : selectedFeeSubType,
+        search: feeSearch,
+      });
+      setFeeRows((data?.items || []).map(mapApiFee));
+      setFeesTotal(data?.pagination?.total || 0);
+    } catch (error) {
+      console.error("Failed to load fees:", error);
+      setFeeRows([]);
+      setFeesTotal(0);
+    } finally {
+      setFeesLoading(false);
+    }
+  }, [feeCurrentPage, selectedFeeCategory, selectedFeeServiceType, selectedFeeSubType, feeSearch]);
+
+  useEffect(() => {
+    if (activeTab === "Rates") loadRates();
+  }, [activeTab, loadRates]);
+
+  useEffect(() => {
+    if (activeTab === "Fees") loadFees();
+  }, [activeTab, loadFees]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTimeRange, searchQuery, selectedMainCurrency]);
+
+  useEffect(() => {
+    setFeeCurrentPage(1);
+  }, [selectedFeeCategory, selectedFeeServiceType, selectedFeeSubType, feeSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(ratesTotal / itemsPerPage));
+  const displayedRates = exchangeRates;
+
+  const feeTotalPages = Math.max(1, Math.ceil(feesTotal / feeItemsPerPage));
 
   const fromCurrency = currencies.find((c) => c.name === selectedFromCurrency);
   const toCurrency = currencies.find((c) => c.name === selectedToCurrency);
@@ -163,24 +253,84 @@ const Rates: React.FC = () => {
   const currentSubTypeOptions = getServiceSubTypeOptions(selectedFeeServiceType);
 
   const filteredFeeRows = feeRows.filter((row) => {
-    const byCategory = row.category === selectedFeeCategory;
-    const byService =
-      selectedFeeServiceType === "All" ||
-      row.serviceType.toLowerCase().includes(selectedFeeServiceType.toLowerCase());
+    if (selectedFeeSubType === "All") return true;
     const normalizedSubType =
       selectedFeeSubType === "Rhinox Pay ID"
         ? "rhinox id"
         : selectedFeeSubType.toLowerCase();
-    const bySubType =
-      selectedFeeSubType === "All" ||
-      row.subType.toLowerCase().includes(normalizedSubType);
-    const bySearch =
-      feeSearch.trim() === "" ||
-      row.category.toLowerCase().includes(feeSearch.toLowerCase()) ||
-      row.serviceType.toLowerCase().includes(feeSearch.toLowerCase()) ||
-      row.subType.toLowerCase().includes(feeSearch.toLowerCase());
-    return byCategory && byService && bySubType && bySearch;
+    return row.subType.toLowerCase().includes(normalizedSubType);
   });
+
+  const conversionRate = exchangeRates.find(
+    (rate) =>
+      rate.fromCode === getCurrencyCode(selectedFromCurrency) &&
+      rate.toCode === getCurrencyCode(selectedToCurrency)
+  );
+
+  const handleSaveRate = async () => {
+    const pct = Number(ratePercentage);
+    if (!ratePercentage || Number.isNaN(pct)) return;
+    const fromCurrency = getCurrencyCode("Nigeria");
+    const toCurrency = getCurrencyCode(selectedModalCurrency);
+    const existing = exchangeRates.find(
+      (rate) => rate.fromCode === fromCurrency && rate.toCode === toCurrency
+    );
+    const marketRate = existing?.rawMarketRate || 1;
+    const multiplier =
+      selectedRateDirection === "Decrease" ? 1 - pct / 100 : 1 + pct / 100;
+    const rhinoxRate = marketRate * multiplier;
+    setSavingRate(true);
+    try {
+      await setExchangeRate({ fromCurrency, toCurrency, marketRate, rhinoxRate });
+      setFlatRatePercent(String(pct));
+      setShowSetRateModal(false);
+      await loadRates();
+    } catch (error) {
+      console.error("Failed to set exchange rate:", error);
+    } finally {
+      setSavingRate(false);
+    }
+  };
+
+  const handleSaveFee = async () => {
+    const value = Number(editingFee ? feeCommissionValue || feeFixedValue : feeCommissionValue || feeFixedValue);
+    if (Number.isNaN(value)) return;
+    setSavingFee(true);
+    try {
+      if (editingFee) {
+        await updateFee(editingFee.id, { value });
+      } else {
+        await createFee({
+          walletType: selectedFeeCategory.toLowerCase(),
+          serviceType: selectedFeeServiceType === "All" ? "Send" : selectedFeeServiceType,
+          subType: selectedFeeSubType === "All" ? undefined : selectedFeeSubType,
+          feeType: feeFixedValue ? "fixed" : "percentage",
+          value,
+        });
+      }
+      setShowSetFeesModal(false);
+      setEditingFee(null);
+      setFeeFixedValue("");
+      setFeeCommissionValue("");
+      await loadFees();
+    } catch (error) {
+      console.error("Failed to save fee:", error);
+    } finally {
+      setSavingFee(false);
+    }
+  };
+
+  const openEditFee = (row: FeeRow) => {
+    setEditingFee(row);
+    if (row.feeType === "percentage") {
+      setFeeCommissionValue(String(row.rawValue));
+      setFeeFixedValue("");
+    } else {
+      setFeeFixedValue(String(row.rawValue));
+      setFeeCommissionValue("");
+    }
+    setShowSetFeesModal(true);
+  };
 
   // Click outside handlers
   useEffect(() => {
@@ -621,28 +771,54 @@ const Rates: React.FC = () => {
                       <td className="py-3 text-white" style={{ fontSize: '12px', fontWeight: 400, paddingLeft: '24px', paddingRight: '24px', verticalAlign: 'middle' }}>{row.fixedCommission}</td>
                       <td className="py-3 text-white" style={{ fontSize: '12px', fontWeight: 400, paddingLeft: '24px', paddingRight: '24px', verticalAlign: 'middle' }}>{row.commission}</td>
                       <td className="py-3" style={{ paddingLeft: '24px', paddingRight: '24px', verticalAlign: 'middle' }}>
-                        <button className="rounded-full px-4 py-1.5 text-black text-xs font-medium whitespace-nowrap cursor-pointer transition-opacity hover:opacity-90 bg-[#A9EF45]">
+                        <button
+                          onClick={() => openEditFee(row)}
+                          className="rounded-full px-4 py-1.5 text-black text-xs font-medium whitespace-nowrap cursor-pointer transition-opacity hover:opacity-90 bg-[#A9EF45]"
+                        >
                           Edit %
                         </button>
                       </td>
                     </tr>
                   ))}
+                  {!feesLoading && filteredFeeRows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-white">No fees found</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
 
             <div className="flex flex-col md:flex-row justify-between items-center p-6 pt-4 gap-4" style={{ backgroundColor: '#0B1820', borderBottomLeftRadius: '20px', borderBottomRightRadius: '20px' }}>
               <div className="text-white" style={{ fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif', fontSize: '14px', fontWeight: 400 }}>
-                Showing 1-5 of 200 Users
+                {feesTotal === 0
+                  ? "Showing 0 fees"
+                  : `Showing ${((feeCurrentPage - 1) * feeItemsPerPage) + 1}-${Math.min(feeCurrentPage * feeItemsPerPage, feesTotal)} of ${formatNumber(feesTotal)} Fees`}
               </div>
               <div className="flex items-center gap-2 text-white">
-                <button className="h-8 w-8 rounded-lg bg-[#1C2630]">&lt;</button>
-                <button className="h-8 w-8 rounded-lg bg-[#1C2630]">1</button>
-                <button className="opacity-70">2</button>
-                <span className="px-1 opacity-70">...</span>
-                <button className="opacity-70">10</button>
-                <button className="opacity-70">11</button>
-                <button className="h-8 w-8 rounded-lg bg-[#1C2630]">&gt;</button>
+                <button
+                  onClick={() => setFeeCurrentPage((prev) => Math.max(1, prev - 1))}
+                  disabled={feeCurrentPage === 1}
+                  className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+                >
+                  &lt;
+                </button>
+                {Array.from({ length: Math.min(feeTotalPages, 7) }, (_, i) => i + 1).map((pageNum) => (
+                  <button
+                    key={pageNum}
+                    onClick={() => setFeeCurrentPage(pageNum)}
+                    className={`h-8 min-w-8 rounded-lg px-2 ${feeCurrentPage === pageNum ? "bg-[#1C2630]" : "opacity-70"}`}
+                  >
+                    {pageNum}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setFeeCurrentPage((prev) => Math.min(feeTotalPages, prev + 1))}
+                  disabled={feeCurrentPage === feeTotalPages}
+                  className="h-8 w-8 rounded-lg bg-[#1C2630] disabled:opacity-50"
+                >
+                  &gt;
+                </button>
               </div>
             </div>
           </div>
@@ -709,7 +885,7 @@ const Rates: React.FC = () => {
                    {toCurrency?.symbol || 'c'}
                  </span>
                  <span className="font-['SF_Pro',-apple-system,BlinkMacSystemFont,sans-serif] text-5xl font-semibold text-white">
-                   0.0073
+                   {conversionRate ? formatNumber(conversionRate.rawRhinoxRate) : "0"}
                  </span>
                </div>
              </div>
@@ -862,7 +1038,7 @@ const Rates: React.FC = () => {
                  This is the rate set for all fiat conversion
                </p>
                <div className="font-['SF_Pro',-apple-system,BlinkMacSystemFont,sans-serif] text-6xl pb-2 font-semibold text-black leading-none text-center">
-                 5%
+                 {formatNumber(flatRatePercent)}%
                </div>
              </div>
              <div className="flex justify-center mt-auto">
@@ -1098,7 +1274,11 @@ const Rates: React.FC = () => {
               <col style={{ width: '11%' }} />
             </colgroup>
             <tbody>
-              {displayedRates.length > 0 ? (
+              {ratesLoading ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-white">Loading rates...</td>
+                </tr>
+              ) : displayedRates.length > 0 ? (
                 displayedRates.map((rate) => {
                   const mainCurrencyData = currencies.find(c => rate.mainCurrency.includes(c.name));
                   const otherCurrencyData = currencies.find(c => rate.otherCurrency.includes(c.name));
@@ -1258,7 +1438,9 @@ const Rates: React.FC = () => {
             fontSize: '14px',
             fontWeight: 400
           }}>
-            Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredRates.length)} of {filteredRates.length} Rates
+            {ratesTotal === 0
+              ? "Showing 0 rates"
+              : `Showing ${((currentPage - 1) * itemsPerPage) + 1}-${Math.min(currentPage * itemsPerPage, ratesTotal)} of ${formatNumber(ratesTotal)} Rates`}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1565,8 +1747,12 @@ const Rates: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="mt-6 inline-flex h-[38px] min-w-[112px] items-center justify-center rounded-full bg-[#A9EF45] px-6 text-[12px] font-medium text-[#0C141C]">
-                  Set Rate
+                <button
+                  onClick={handleSaveRate}
+                  disabled={savingRate}
+                  className="mt-6 inline-flex h-[38px] min-w-[112px] items-center justify-center rounded-full bg-[#A9EF45] px-6 text-[12px] font-medium text-[#0C141C] disabled:opacity-60"
+                >
+                  {savingRate ? "Saving..." : "Set Rate"}
                 </button>
               </div>
             </div>
@@ -1625,10 +1811,12 @@ const Rates: React.FC = () => {
                     <p className="mb-2 text-[12px] text-white">Fixed fee</p>
                     <div className="flex h-[38px] w-full items-center rounded-[8px] border border-[#1B2F42] bg-[#0C1A2A] px-3">
                       <input
+                        value={feeFixedValue}
+                        onChange={(e) => setFeeFixedValue(e.target.value)}
                         placeholder="Type fixed fee"
                         className="h-full flex-1 bg-transparent text-[11px] text-white outline-none placeholder:text-[#6F8193]"
                       />
-                      <span className="text-[#6F8193] text-[16px] leading-none">%</span>
+                      <span className="text-[#6F8193] text-[16px] leading-none">$</span>
                     </div>
                   </div>
 
@@ -1636,6 +1824,8 @@ const Rates: React.FC = () => {
                     <p className="mb-2 text-[12px] text-white">Commission</p>
                     <div className="flex h-[38px] w-full items-center rounded-[8px] border border-[#1B2F42] bg-[#0C1A2A] px-3">
                       <input
+                        value={feeCommissionValue}
+                        onChange={(e) => setFeeCommissionValue(e.target.value)}
                         placeholder="Type commission"
                         className="h-full flex-1 bg-transparent text-[11px] text-white outline-none placeholder:text-[#6F8193]"
                       />
@@ -1644,8 +1834,12 @@ const Rates: React.FC = () => {
                   </div>
                 </div>
 
-                <button className="mt-6 inline-flex h-[31px] w-[91px] items-center justify-center rounded-[100px] bg-[#A9EF45] text-[10px] text-[#0C141C]">
-                  Set Fee
+                <button
+                  onClick={handleSaveFee}
+                  disabled={savingFee}
+                  className="mt-6 inline-flex h-[31px] w-[91px] items-center justify-center rounded-[100px] bg-[#A9EF45] text-[10px] text-[#0C141C] disabled:opacity-60"
+                >
+                  {savingFee ? "Saving..." : editingFee ? "Update Fee" : "Set Fee"}
                 </button>
               </div>
             </div>

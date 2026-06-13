@@ -1,21 +1,26 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ChevronDown, Pencil, X } from "lucide-react";
 import images from "../../constants/images";
+import { createStaff } from "../../services/admin";
+import { mapCountryCode } from "../../utils/adminFormatters";
 
 interface AddAdminModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
 }
 
 const inputClass =
   "h-10 w-full rounded-lg border border-transparent bg-[#0F1825] px-4 text-sm text-white outline-none placeholder:text-[#878C92] focus:border-[#2A3D4D]";
 
-const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose }) => {
+const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const countryDropdownRef = useRef<HTMLDivElement | null>(null);
   const roleDropdownRef = useRef<HTMLDivElement | null>(null);
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     country: "",
@@ -99,9 +104,37 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose }) => {
 
         <form
           className="space-y-3 p-4"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
-            onClose();
+            setSaving(true);
+            setError("");
+            try {
+              const nameParts = formData.name.trim().split(/\s+/);
+              const firstName = nameParts[0] || "";
+              const lastName = nameParts.slice(1).join(" ") || firstName;
+              await createStaff({
+                email: formData.email,
+                password: formData.password,
+                firstName,
+                lastName,
+                role: formData.role,
+                country: mapCountryCode(formData.country),
+              });
+              setFormData({
+                name: "",
+                country: "",
+                role: "",
+                email: "",
+                password: "",
+              });
+              onSuccess?.();
+              onClose();
+            } catch (submitError) {
+              console.error("Failed to create admin:", submitError);
+              setError("Failed to create admin. Please check the form and try again.");
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           <div className="mb-4 flex justify-center">
@@ -244,11 +277,14 @@ const AddAdminModal: React.FC<AddAdminModalProps> = ({ isOpen, onClose }) => {
             />
           </div>
 
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
           <button
             type="submit"
-            className="mt-4 flex h-[40px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-sm font-semibold text-[#0C141C]"
+            disabled={saving}
+            className="mt-4 flex h-[40px] w-[110px] items-center justify-center rounded-full bg-[#A9EF45] text-sm font-semibold text-[#0C141C] disabled:opacity-60"
           >
-            Save
+            {saving ? "Saving..." : "Save"}
           </button>
         </form>
       </div>

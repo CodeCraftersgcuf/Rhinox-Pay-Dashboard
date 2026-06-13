@@ -4,6 +4,8 @@ import { MessageCircle } from "lucide-react";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
 import SupportChatModal from "../../components/support/SupportChatModal";
+import { fetchSupportChats } from "../../services/admin";
+import { formatDateTime, formatNumber, mapCountryName } from "../../utils/adminFormatters";
 
 interface SupportRow {
   id: string;
@@ -16,13 +18,16 @@ interface SupportRow {
 }
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
-const rows: SupportRow[] = [
-  { id: "1", username: "Qamardeen Malik", category: "Payment Issue", country: "Nigeria", status: "Resolved", agent: "Adewale", date: "22/10/25 07:22 AM" },
-  { id: "2", username: "Qamardeen Malik", category: "Payment Issue", country: "Nigeria", status: "Pending", agent: "-", date: "22/10/25 07:22 AM" },
-  { id: "3", username: "Qamardeen Malik", category: "Payment Issue", country: "Nigeria", status: "In session", agent: "Adewale", date: "22/10/25 07:22 AM" },
-  { id: "4", username: "Qamardeen Malik", category: "Payment Issue", country: "Nigeria", status: "Active", agent: "Adewale", date: "22/10/25 07:22 AM" },
-  { id: "5", username: "Qamardeen Malik", category: "Payment Issue", country: "Nigeria", status: "Resolved", agent: "Adewale", date: "22/10/25 07:22 AM" },
-];
+
+const formatSupportStatus = (status: string): SupportRow["status"] => {
+  const map: Record<string, SupportRow["status"]> = {
+    pending: "Pending",
+    resolved: "Resolved",
+    in_session: "In session",
+    active: "Active",
+  };
+  return map[status?.toLowerCase()] || "Pending";
+};
 
 const statusClass: Record<SupportRow["status"], string> = {
   Resolved: "bg-[#0C9E2A] text-white",
@@ -57,9 +62,49 @@ const Support: React.FC = () => {
   const statusDropdownRef = useRef<HTMLDivElement | null>(null);
   const wonByDropdownRef = useRef<HTMLDivElement | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [rows, setRows] = useState<SupportRow[]>([]);
+  const [chatStats, setChatStats] = useState({ total: 0, pending: 0, resolved: 0 });
+  const [loading, setLoading] = useState(true);
   const countryOptions = ["Country", "Nigeria", "Ghana", "Kenya", "South Africa"];
   const statusOptions = ["All Status", "Pending", "In session", "Active", "Resolved"];
   const wonByOptions = ["Won by", "Adewale", "-"];
+
+  useEffect(() => {
+    const loadChats = async () => {
+      setLoading(true);
+      try {
+        const data = await fetchSupportChats({
+          range: selectedTimeRange,
+          country: selectedCountry,
+          status: selectedStatus,
+          search: searchText.trim() || undefined,
+          limit: 100,
+        });
+        const mappedRows = (data?.items || []).map((row: any) => ({
+          id: String(row.id),
+          username: row.username,
+          category: row.category || "-",
+          country: mapCountryName(row.country),
+          status: formatSupportStatus(row.status),
+          agent: row.agent === "Unassigned" ? "-" : row.agent,
+          date: formatDateTime(row.date),
+        }));
+        setRows(mappedRows);
+        setChatStats({
+          total: data?.pagination?.total || mappedRows.length,
+          pending: mappedRows.filter((row: SupportRow) => row.status === "Pending").length,
+          resolved: mappedRows.filter((row: SupportRow) => row.status === "Resolved").length,
+        });
+      } catch (error) {
+        console.error("Failed to load support chats:", error);
+        setRows([]);
+        setChatStats({ total: 0, pending: 0, resolved: 0 });
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadChats();
+  }, [selectedTimeRange, selectedCountry, selectedStatus, searchText]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -89,16 +134,10 @@ const Support: React.FC = () => {
     };
   }, []);
 
-  const filteredRows = useMemo(
-    () =>
-      rows.filter((row) =>
-        row.username.toLowerCase().includes(searchText.toLowerCase().trim()) &&
-        (selectedCountry === "Country" || row.country === selectedCountry) &&
-        (selectedStatus === "All Status" || row.status === selectedStatus) &&
-        (selectedWonBy === "Won by" || row.agent === selectedWonBy)
-      ),
-    [searchText, selectedCountry, selectedStatus, selectedWonBy]
-  );
+  const filteredRows = useMemo(() => {
+    if (selectedWonBy === "Won by") return rows;
+    return rows.filter((row) => row.agent === selectedWonBy);
+  }, [rows, selectedWonBy]);
   const allSelected =
     filteredRows.length > 0 && filteredRows.every((row) => selectedIds.has(row.id));
   const partiallySelected = selectedIds.size > 0 && !allSelected;
@@ -187,9 +226,9 @@ const Support: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           {[
-            { label: "Total Chats", value: 250 },
-            { label: "Pending", value: 150 },
-            { label: "Resolved", value: 100 },
+            { label: "Total Chats", value: loading ? "..." : formatNumber(chatStats.total) },
+            { label: "Pending", value: loading ? "..." : formatNumber(chatStats.pending) },
+            { label: "Resolved", value: loading ? "..." : formatNumber(chatStats.resolved) },
           ].map((stat) => (
             <div
               key={stat.label}
@@ -398,7 +437,16 @@ const Support: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
+              {loading ? (
+                <tr className="border-b border-[#2B363E] text-[12px] text-[#CFD7DD]">
+                  <td colSpan={8} className="px-4 py-6 text-center">Loading support chats...</td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr className="border-b border-[#2B363E] text-[12px] text-[#CFD7DD]">
+                  <td colSpan={8} className="px-4 py-6 text-center">No support chats found</td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
                 <tr key={row.id} className="border-b border-[#2B363E] text-[12px] text-white">
                   <td className="px-2 py-3">
                     <input
@@ -441,7 +489,7 @@ const Support: React.FC = () => {
                     </button>
                   </td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>
@@ -451,6 +499,29 @@ const Support: React.FC = () => {
         isOpen={Boolean(activeChatUser)}
         onClose={() => setActiveChatUser(null)}
         username={activeChatUser?.username ?? "User"}
+        chatId={activeChatUser?.id}
+        mode="support"
+        onUpdated={() => {
+          setActiveChatUser(null);
+          void fetchSupportChats({
+            range: selectedTimeRange,
+            country: selectedCountry,
+            status: selectedStatus,
+            search: searchText.trim() || undefined,
+            limit: 100,
+          }).then((data) => {
+            const mappedRows = (data?.items || []).map((row: any) => ({
+              id: String(row.id),
+              username: row.username,
+              category: row.category || "-",
+              country: mapCountryName(row.country),
+              status: formatSupportStatus(row.status),
+              agent: row.agent === "Unassigned" ? "-" : row.agent,
+              date: formatDateTime(row.date),
+            }));
+            setRows(mappedRows);
+          });
+        }}
       />
     </div>
   );

@@ -1,27 +1,28 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Bell, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
 import SendNotificationModal from "../../components/notification/SendNotificationModal";
 import SendBannerModal from "../../components/notification/SendBannerModal";
+import { fetchBanners, fetchNotifications, sendNotification, deleteBanner } from "../../services/admin";
+import { formatDateTime, formatRegions } from "../../utils/adminFormatters";
 
 const pageTabs = ["Notification", "Banner"] as const;
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-const cards = Array.from({ length: 6 }).map((_, index) => ({
-  id: String(index + 1),
-  subject: "Get the best service",
-  message:
-    "Get the best service, Get the best service, Get the best service,Get the best service,Get the best service",
-  regions: "NG ,GH, KY, SA",
-  date: "Oct 22, 2025 - 10:22 AM",
-}));
+interface NotificationCard {
+  id: string;
+  subject: string;
+  message: string;
+  regions: string;
+  date: string;
+}
 
-const bannerCards = Array.from({ length: 3 }).map((_, index) => ({
-  id: String(index + 1),
-  image: "/src/assets/images/Rectangle-202.png",
-  regions: "NG ,GH, KY, SA",
-  date: "Oct 22, 2025 - 10:22 AM",
-}));
+interface BannerCard {
+  id: string;
+  image: string;
+  regions: string;
+  date: string;
+}
 
 const pillButtonStyle: React.CSSProperties = {
   width: "100px",
@@ -44,9 +45,68 @@ const Notification: React.FC = () => {
   const [selectedCountry, setSelectedCountry] = useState("Country");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const countryDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [cards, setCards] = useState<NotificationCard[]>([]);
+  const [bannerCards, setBannerCards] = useState<BannerCard[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const countryOptions = ["Country", "Nigeria", "Ghana", "Kenya", "South Africa"];
   const isBannerTab = activeTab === "Banner";
+
+  const loadNotifications = useCallback(async () => {
+    setLoading(true);
+    try {
+      if (isBannerTab) {
+        const data = await fetchBanners({
+          range: selectedTimeRange,
+          country: selectedCountry,
+          limit: 50,
+        });
+        setBannerCards(
+          (data?.items || []).map((banner: any) => ({
+            id: String(banner.id),
+            image: banner.imageUrl || "/src/assets/images/Rectangle-202.png",
+            regions: formatRegions(banner.regions),
+            date: formatDateTime(banner.createdAt),
+          }))
+        );
+      } else {
+        const data = await fetchNotifications({
+          range: selectedTimeRange,
+          country: selectedCountry,
+          limit: 50,
+        });
+        setCards(
+          (data?.items || []).map((notification: any) => ({
+            id: String(notification.id),
+            subject: notification.title,
+            message: notification.message,
+            regions: formatRegions(notification.countries),
+            date: formatDateTime(notification.createdAt),
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to load notifications:", error);
+      if (isBannerTab) setBannerCards([]);
+      else setCards([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [isBannerTab, selectedCountry, selectedTimeRange]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const handleSendNotification = async (payload: {
+    title: string;
+    message: string;
+    countries?: string[];
+    userSegment?: string;
+  }) => {
+    await sendNotification(payload);
+    await loadNotifications();
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -189,13 +249,20 @@ const Notification: React.FC = () => {
       <SendNotificationModal
         isOpen={showSendNotificationModal}
         onClose={() => setShowSendNotificationModal(false)}
+        onSend={handleSendNotification}
       />
       <SendBannerModal
         isOpen={showSendBannerModal}
         onClose={() => setShowSendBannerModal(false)}
+        onSuccess={loadNotifications}
       />
 
       {isBannerTab ? (
+        loading ? (
+          <p className="text-sm text-[#7B8A96]">Loading banners...</p>
+        ) : bannerCards.length === 0 ? (
+          <p className="text-sm text-[#7B8A96]">No banners found</p>
+        ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {bannerCards.map((card) => (
             <article
@@ -215,7 +282,18 @@ const Notification: React.FC = () => {
                   <button className="h-8 w-8 rounded-md border border-[#26333F] text-[#C8D0D6] bg-[#1B2430]">
                     <Pencil size={14} className="mx-auto" />
                   </button>
-                  <button className="h-8 w-8 rounded-md border border-[#26333F] text-[#E10405] bg-[#1B2430]">
+                  <button
+                    onClick={async () => {
+                      if (!window.confirm("Delete this banner?")) return;
+                      try {
+                        await deleteBanner(card.id);
+                        await loadNotifications();
+                      } catch (error) {
+                        console.error("Failed to delete banner:", error);
+                      }
+                    }}
+                    className="h-8 w-8 rounded-md border border-[#26333F] text-[#E10405] bg-[#1B2430]"
+                  >
                     <Trash2 size={14} className="mx-auto" />
                   </button>
                   <button className="h-8 w-8 rounded-md border border-[#26333F] bg-[#1B2430] flex items-center justify-center">
@@ -232,6 +310,11 @@ const Notification: React.FC = () => {
             </article>
           ))}
         </div>
+        )
+      ) : loading ? (
+        <p className="text-sm text-[#7B8A96]">Loading notifications...</p>
+      ) : cards.length === 0 ? (
+        <p className="text-sm text-[#7B8A96]">No notifications found</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           {cards.map((card) => (
@@ -243,7 +326,7 @@ const Notification: React.FC = () => {
               <div className="space-y-3 p-4">
                 <div>
                   <p className="text-xs text-[#7D8A95]">Subject</p>
-                  <p className="mt-2 text-[18px] leading-none text-white">Get the best service</p>
+                  <p className="mt-2 text-[18px] leading-none text-white">{card.subject}</p>
                 </div>
                 <div>
                   <p className="text-xs text-[#7D8A95]">Message</p>

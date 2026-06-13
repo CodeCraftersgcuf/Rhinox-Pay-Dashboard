@@ -1,11 +1,26 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import images from "../../../constants/images";
+import { fetchUserWallets, fetchUserTransactions } from "../../../services/admin";
+import { formatDateTime, formatNumber } from "../../../utils/adminFormatters";
+
+type WalletOption = {
+  id: string;
+  name: string;
+  country?: string;
+  currency?: string;
+  balance: string;
+  flag?: string;
+  icon?: string;
+  isAllWallets?: boolean;
+};
 
 const UserWallet: React.FC = () => {
   const { username } = useParams();
   const navigate = useNavigate();
+  const [apiWallets, setApiWallets] = useState<any[]>([]);
+  const [walletActivities, setWalletActivities] = useState<Array<{ id: string; activity: string; date: string }>>([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
   const [selectedFiatCurrency, setSelectedFiatCurrency] = useState("NGN");
   const [selectedCryptoCurrency, setSelectedCryptoCurrency] = useState("BTC");
@@ -63,13 +78,47 @@ const UserWallet: React.FC = () => {
 
   const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-  const fiatCurrencies = [
-    { value: "NGN", name: "NGN", flag: images.flag },
-    { value: "USD", name: "USD", flag: images.flag2 },
-    { value: "GHC", name: "GHC", flag: images.flag3 }
-  ];
+  useEffect(() => {
+    if (!username) return;
 
-  const walletOptions = [
+    const loadWallets = async () => {
+      try {
+        const data = await fetchUserWallets(username);
+        setApiWallets(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error("Failed to load user wallets:", error);
+        setApiWallets([]);
+      }
+    };
+
+    loadWallets();
+  }, [username]);
+
+  useEffect(() => {
+    if (!username) return;
+    const loadActivities = async () => {
+      try {
+        const data = await fetchUserTransactions(username, {
+          page: 1,
+          limit: 20,
+          range: selectedTimeRange,
+        });
+        setWalletActivities(
+          (data?.items || []).map((tx: any) => ({
+            id: String(tx.id || tx.reference),
+            activity: `${tx.type || "Transaction"} · ${tx.amount} ${tx.currency || ""} (${tx.status})`,
+            date: formatDateTime(tx.createdAt),
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load wallet activities:", error);
+        setWalletActivities([]);
+      }
+    };
+    loadActivities();
+  }, [username, selectedTimeRange]);
+
+  const staticWalletOptions: WalletOption[] = [
     {
       id: "all",
       name: "All Wallets balance",
@@ -140,14 +189,36 @@ const UserWallet: React.FC = () => {
   const [selectedWallet, setSelectedWallet] = useState("NGN");
   const [selectedCryptoWallet, setSelectedCryptoWallet] = useState("BTC");
 
-  const cryptoCurrencies = [
-    { value: "BTC", name: "BTC" },
-    { value: "ETH", name: "ETH" },
-    { value: "USDT", name: "USDT" },
-    { value: "USDC", name: "USDC" }
-  ];
+  const walletOptions: WalletOption[] = useMemo(() => {
+    const fiat = apiWallets.filter((wallet) => wallet.type === "fiat");
+    if (!fiat.length) return staticWalletOptions;
 
-  const cryptoWalletOptions = [
+    const mapped = fiat.map((wallet) => ({
+      id: wallet.currency,
+      name: `${wallet.currencyRef?.name || wallet.currency} (${wallet.currency})`,
+      country: wallet.currencyRef?.name || wallet.currency,
+      currency: wallet.currency,
+      balance: `${wallet.currency}${formatNumber(wallet.balance)}`,
+      flag: images.flag,
+    }));
+
+    return [
+      {
+        id: "all",
+        name: "All Wallets balance",
+        country: "",
+        currency: "",
+        balance: `${fiat[0]?.currency || "NGN"}${formatNumber(
+          fiat.reduce((sum, wallet) => sum + Number(wallet.balance || 0), 0)
+        )}`,
+        icon: images.analytics_up,
+        isAllWallets: true,
+      },
+      ...mapped,
+    ];
+  }, [apiWallets]);
+
+  const staticCryptoWalletOptions: WalletOption[] = [
     {
       id: "all",
       name: "All Wallets balance",
@@ -192,22 +263,60 @@ const UserWallet: React.FC = () => {
     { value: "EUR", name: "EUR" }
   ];
 
-  const quickFiatWallets = [
+  const cryptoWalletOptions: WalletOption[] = useMemo(() => {
+    const crypto = apiWallets.filter((wallet) => wallet.type === "crypto");
+    if (!crypto.length) return staticCryptoWalletOptions;
+
+    const mapped = crypto.map((wallet) => ({
+      id: wallet.currency,
+      name: `${wallet.currencyRef?.name || wallet.currency} (${wallet.currency})`,
+      currency: wallet.currency,
+      balance: `${formatNumber(wallet.balance)} ${wallet.currency}`,
+      icon: images.logos_bitcoin,
+    }));
+
+    return [
+      {
+        id: "all",
+        name: "All Wallets balance",
+        currency: "",
+        balance: `${formatNumber(crypto.reduce((sum, wallet) => sum + Number(wallet.balance || 0), 0))} ${crypto[0]?.currency || "BTC"}`,
+        icon: images.analytics_up,
+        isAllWallets: true,
+      },
+      ...mapped,
+    ];
+  }, [apiWallets]);
+
+  const staticQuickFiatWallets = [
     { currency: "NGN", balance: "N20,000" },
     { currency: "NGN", balance: "N20,000" },
     { currency: "NGN", balance: "N20,000" }
   ];
 
-  const quickCryptoWallets = [
+  const quickFiatWallets = useMemo(() => {
+    const fiat = apiWallets.filter((wallet) => wallet.type === "fiat");
+    if (!fiat.length) return staticQuickFiatWallets;
+    return fiat.slice(0, 3).map((wallet) => ({
+      currency: wallet.currency,
+      balance: `${wallet.currency}${formatNumber(wallet.balance)}`,
+    }));
+  }, [apiWallets]);
+
+  const staticQuickCryptoWallets = [
     { currency: "USDT", balance: "1,000" },
     { currency: "USDC", balance: "1,000" },
     { currency: "ETH", balance: "0.0123" }
   ];
 
-  const walletActivities = [
-    { id: "1", activity: "BTC Wallet funded", date: "22/10/25 - 07:22 AM" },
-    { id: "2", activity: "NGN to GHC Conversion completed", date: "22/10/25 - 07:22 AM" }
-  ];
+  const quickCryptoWallets = useMemo(() => {
+    const crypto = apiWallets.filter((wallet) => wallet.type === "crypto");
+    if (!crypto.length) return staticQuickCryptoWallets;
+    return crypto.slice(0, 3).map((wallet) => ({
+      currency: wallet.currency,
+      balance: formatNumber(wallet.balance),
+    }));
+  }, [apiWallets]);
 
   // Calculate dropdown position
   const calculateFiatDropdownPosition = () => {
@@ -1127,7 +1236,7 @@ const UserWallet: React.FC = () => {
                                   key={wallet.id}
                                   onClick={() => {
                                     setSelectedWallet(wallet.id);
-                                    if (!wallet.isAllWallets) {
+                                    if (!wallet.isAllWallets && wallet.currency) {
                                       setSelectedFiatCurrency(wallet.currency);
                                     }
                                     setShowFiatCurrencyDropdown(false);
@@ -1686,7 +1795,7 @@ const UserWallet: React.FC = () => {
                                   key={wallet.id}
                                   onClick={() => {
                                     setSelectedCryptoWallet(wallet.id);
-                                    if (!wallet.isAllWallets) {
+                                    if (!wallet.isAllWallets && wallet.currency) {
                                       setSelectedCryptoCurrency(wallet.currency);
                                     }
                                     setShowCryptoCurrencyDropdown(false);

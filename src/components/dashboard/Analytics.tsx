@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import images from "../../constants/images";
+import { fetchDashboardCharts } from "../../services/admin";
+import { formatNumber } from "../../utils/adminFormatters";
 
 interface AnalyticsProps {
   selectedTimeRange?: string;
@@ -27,6 +29,38 @@ const Analytics: React.FC<AnalyticsProps> = ({ selectedTimeRange = "All Time" })
     crypto: { top: 0, right: 0 },
     fiat: { top: 0, right: 0 }
   });
+  const [chartLabels, setChartLabels] = useState<string[]>([]);
+  const [chartValues, setChartValues] = useState<number[]>([]);
+
+  useEffect(() => {
+    const loadCharts = async () => {
+      try {
+        const metricMap: Record<string, string> = {
+          Revenue: 'revenue',
+          Transactions: 'transactions',
+          Users: 'users',
+          Volume: 'volume',
+        };
+        const data = await fetchDashboardCharts({
+          range: selectedTimeRange,
+          metric: metricMap[selectedRevenue] || 'revenue',
+          walletType: selectedCrypto === 'Crypto' ? 'crypto' : 'fiat',
+          currency: selectedFiat !== 'Fiat' ? selectedFiat : undefined,
+        });
+        setChartLabels(data?.labels || []);
+        setChartValues(data?.values || []);
+      } catch (error) {
+        console.error('Failed to load dashboard charts:', error);
+        setChartLabels([]);
+        setChartValues([]);
+      }
+    };
+    loadCharts();
+  }, [selectedTimeRange, selectedRevenue, selectedCrypto, selectedFiat]);
+
+  const maxChartValue = Math.max(...chartValues, 1);
+  const yAxisMax = Math.ceil(maxChartValue / 100) * 100 || 600;
+  const yAxisSteps = [yAxisMax, Math.round(yAxisMax * 0.66), Math.round(yAxisMax * 0.33), 0];
 
   // Function to calculate dropdown positions
   const calculatePositions = () => {
@@ -351,10 +385,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ selectedTimeRange = "All Time" })
           <div className="h-full flex">
             {/* Y-axis labels */}
             <div className="flex flex-col justify-between mr-2" style={{ width: '30px' }}>
-              <span className="text-gray-500 text-xs">600</span>
-              <span className="text-gray-500 text-xs">400</span>
-              <span className="text-gray-500 text-xs">200</span>
-              <span className="text-gray-500 text-xs">0</span>
+              {yAxisSteps.map((value) => (
+                <span key={value} className="text-gray-500 text-xs">{formatNumber(value)}</span>
+              ))}
             </div>
 
             {/* Chart area with bars */}
@@ -363,101 +396,31 @@ const Analytics: React.FC<AnalyticsProps> = ({ selectedTimeRange = "All Time" })
               <div className="flex-1 relative" style={{ height: '140px', minHeight: '140px', minWidth: '720px' }}>
                 {/* Grid lines */}
                 <div className="absolute inset-0 flex flex-col justify-between" style={{ minWidth: '720px' }}>
-                  {[0, 200, 400, 600].map((value) => (
+                  {yAxisSteps.map((value) => (
                     <div key={value} className="border-t border-gray-700" style={{ opacity: 0.3 }}></div>
                   ))}
                 </div>
 
-                {/* Chart bars */}
                 <div className="absolute inset-0 flex items-end justify-between" style={{ padding: '0 4px', paddingBottom: '0', height: '100%', minWidth: '720px' }}>
-                  {/* Jan */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '100%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '67%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Feb */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '37%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '87%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Mar */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '70%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '50%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Apr */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '100%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '83%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* May */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '20%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '37%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Jun */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '77%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '63%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Jul */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '100%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '63%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Aug */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '100%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '63%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Sep */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '100%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '63%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Oct */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '90%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '60%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Nov */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '85%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '55%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
-
-                  {/* Dec */}
-                  <div className="flex items-end gap-1" style={{ width: '8.33%', height: '100%' }}>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '95%', background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
-                    <div className="rounded-t rounded-b" style={{ width: '17px', height: '70%', background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
-                  </div>
+                  {(chartLabels.length ? chartLabels : ['No data']).map((label, index) => {
+                    const value = chartValues[index] || 0;
+                    const height = `${Math.max(4, (value / yAxisMax) * 100)}%`;
+                    return (
+                      <div key={`${label}-${index}`} className="flex items-end gap-1" style={{ width: `${100 / Math.max(chartLabels.length, 1)}%`, height: '100%' }}>
+                        <div className="rounded-t rounded-b" style={{ width: '17px', height, background: 'repeating-linear-gradient(45deg, #A9EF45, #A9EF45 4px, #82BF29 4px, #82BF29 8px)' }}></div>
+                        <div className="rounded-t rounded-b" style={{ width: '17px', height: `${Math.max(4, height === '4%' ? 4 : parseFloat(height) * 0.8)}%`, background: 'repeating-linear-gradient(45deg, #4880C0, #4880C0 4px, #3C70AD 4px, #3C70AD 8px)' }}></div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* X-axis labels */}
               <div className="flex justify-between mt-2" style={{ height: '20px', minWidth: '720px' }}>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Jan</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Feb</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Mar</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Apr</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>May</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Jun</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Jul</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Aug</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Sep</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Oct</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Nov</span>
-                <span className="text-gray-500 text-xs whitespace-nowrap" style={{ width: '8.33%' }}>Dec</span>
+                {(chartLabels.length ? chartLabels : ['-']).map((label, index) => (
+                  <span key={`${label}-${index}`} className="text-gray-500 text-xs whitespace-nowrap truncate" style={{ width: `${100 / Math.max(chartLabels.length, 1)}%` }}>
+                    {label.length > 10 ? label.slice(5, 10) : label}
+                  </span>
+                ))}
               </div>
             </div>
           </div>

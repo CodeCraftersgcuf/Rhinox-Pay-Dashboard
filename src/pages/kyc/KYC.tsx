@@ -1,8 +1,23 @@
-import React, { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import images from "../../constants/images";
-import { getUsers, User } from "../../services/userService";
+import { fetchKycList } from "../../services/admin";
+import { formatNumber } from "../../utils/adminFormatters";
 import KYCDetailsModal from "../../components/userManagement/KYCDetailsModal";
+
+interface KycUser {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  walletBalance: string;
+  kycStatus: string;
+}
+
+const mapKycStatusFilter = (filter: string): string | undefined => {
+  if (filter === "All") return undefined;
+  if (filter === "Approved") return "verified";
+  return filter.toLowerCase();
+};
 
 const KYC: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
@@ -12,65 +27,70 @@ const KYC: React.FC = () => {
   const [showBulkActionDropdown, setShowBulkActionDropdown] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedUsers, setSelectedUsers] = useState<Set<string>>(new Set());
-  const [usersData, setUsersData] = useState<User[]>([]);
+  const [usersData, setUsersData] = useState<KycUser[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [stats, setStats] = useState({ total: 0, verified: 0, pending: 0, rejected: 0 });
   const [loading, setLoading] = useState(true);
   const [showKYCDetailsModal, setShowKYCDetailsModal] = useState(false);
-  const [selectedUserForKYC, setSelectedUserForKYC] = useState<User | null>(null);
+  const [selectedUserForKYC, setSelectedUserForKYC] = useState<KycUser | null>(null);
+  const [kycRefreshKey, setKycRefreshKey] = useState(0);
   const kycDropdownRef = useRef<HTMLDivElement | null>(null);
   const bulkActionDropdownRef = useRef<HTMLDivElement | null>(null);
 
-  const timeRanges = ["All Time", "7 Days", "1 Month", "1 Year", "Custom"];
+  const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
+  const itemsPerPage = 5;
 
-  // Mock data based on time range
-  const kycData: Record<string, {
-    totalUsers: string;
-    completedKYC: string;
-    uncompletedKYC: string;
-  }> = {
-    "All Time": {
-      totalUsers: "50,000",
-      completedKYC: "200",
-      uncompletedKYC: "120"
-    },
-    "7 Days": {
-      totalUsers: "12,500",
-      completedKYC: "50",
-      uncompletedKYC: "30"
-    },
-    "1 Month": {
-      totalUsers: "35,000",
-      completedKYC: "140",
-      uncompletedKYC: "85"
-    },
-    "1 Year": {
-      totalUsers: "150,000",
-      completedKYC: "600",
-      uncompletedKYC: "360"
-    },
-    "Custom": {
-      totalUsers: "25,000",
-      completedKYC: "100",
-      uncompletedKYC: "60"
-    }
-  };
-
-  const currentData = kycData[selectedTimeRange] || kycData["All Time"];
-
-  // Load users data
   useEffect(() => {
-    const loadUsers = async () => {
+    const loadKycData = async () => {
       setLoading(true);
       try {
-        const users = await getUsers(false);
-        setUsersData(users);
+        const data = await fetchKycList({
+          page: currentPage,
+          limit: itemsPerPage,
+          range: selectedTimeRange,
+          search: searchQuery,
+          status: mapKycStatusFilter(kycFilter),
+        });
+        setUsersData(
+          (data?.items || []).map((item: Record<string, unknown>) => ({
+            id: String(item.userId ?? item.id),
+            name: String(item.name || "N/A"),
+            email: String(item.email || "N/A"),
+            phone: String(item.phone || "N/A"),
+            walletBalance: "N/A",
+            kycStatus: String(item.status || "pending"),
+          }))
+        );
+        setTotalUsers(data?.pagination?.total || 0);
+        setStats({
+          total: data?.stats?.total || 0,
+          verified: data?.stats?.verified || 0,
+          pending: data?.stats?.pending || 0,
+          rejected: data?.stats?.rejected || 0,
+        });
       } catch (error) {
-        console.error('Failed to load users:', error);
+        console.error("Failed to load KYC data:", error);
+        setUsersData([]);
+        setTotalUsers(0);
       } finally {
         setLoading(false);
       }
     };
-    loadUsers();
-  }, []);
+    loadKycData();
+  }, [currentPage, searchQuery, kycFilter, selectedTimeRange, kycRefreshKey]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, kycFilter, selectedTimeRange]);
+
+  const currentData = useMemo(
+    () => ({
+      totalUsers: loading ? "..." : formatNumber(stats.total),
+      completedKYC: loading ? "..." : formatNumber(stats.verified),
+      uncompletedKYC: loading ? "..." : formatNumber(stats.pending + stats.rejected),
+    }),
+    [loading, stats]
+  );
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -88,39 +108,10 @@ const KYC: React.FC = () => {
     };
   }, [showKycDropdown, showBulkActionDropdown]);
 
-  const itemsPerPage = 5;
-  const totalUsers = 200;
-
-  // Filter users based on search query and KYC status
-  const filteredUsers = usersData.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.phone.includes(searchQuery);
-    
-    let matchesKyc = true;
-    if (kycFilter !== "All") {
-      switch (kycFilter.toLowerCase()) {
-        case 'approved':
-          matchesKyc = user.kycStatus === 'verified';
-          break;
-        case 'pending':
-          matchesKyc = user.kycStatus === 'unverified';
-          break;
-        case 'rejected':
-          matchesKyc = user.kycStatus === 'rejected';
-          break;
-        default:
-          matchesKyc = user.kycStatus === kycFilter.toLowerCase();
-      }
-    }
-    return matchesSearch && matchesKyc;
-  });
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const displayedUsers = filteredUsers.slice(startIndex, endIndex);
+  const totalPages = Math.max(1, Math.ceil(totalUsers / itemsPerPage));
+  const startIndex = totalUsers === 0 ? 0 : (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalUsers);
+  const displayedUsers = usersData;
 
   // Handle checkbox selection
   const handleSelectUser = (userId: string) => {
@@ -190,7 +181,7 @@ const KYC: React.FC = () => {
     };
   };
 
-  const handleKYCDetailsClick = (user: User) => {
+  const handleKYCDetailsClick = (user: KycUser) => {
     setSelectedUserForKYC(user);
     setShowKYCDetailsModal(true);
   };
@@ -661,7 +652,10 @@ const KYC: React.FC = () => {
                 type="text"
                 placeholder="Search"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="bg-transparent text-white outline-none flex-1 placeholder-[#878B90]"
                 style={{
                   fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
@@ -983,7 +977,7 @@ const KYC: React.FC = () => {
             fontSize: '14px',
             fontWeight: 400
           }}>
-            Showing {startIndex + 1}-{Math.min(endIndex, totalUsers)} of {totalUsers} Users
+            Showing {totalUsers === 0 ? 0 : startIndex + 1}-{endIndex} of {formatNumber(totalUsers)} Users
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -1087,6 +1081,8 @@ const KYC: React.FC = () => {
       {showKYCDetailsModal && (
         <KYCDetailsModal
           isOpen={showKYCDetailsModal}
+          userId={selectedUserForKYC?.id}
+          onSuccess={() => setKycRefreshKey((k) => k + 1)}
           onClose={() => {
             setShowKYCDetailsModal(false);
             setSelectedUserForKYC(null);

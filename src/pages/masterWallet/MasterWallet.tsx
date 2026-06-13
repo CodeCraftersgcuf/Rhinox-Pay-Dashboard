@@ -3,6 +3,8 @@ import { ChevronDown, Search, Wallet } from "lucide-react";
 import { createPortal } from "react-dom";
 import images from "../../constants/images";
 import TimeFilterTabs from "../../components/setting/TimeFilterTabs";
+import { fetchMasterWalletActivity, fetchMasterWallets, fetchWalletOverview } from "../../services/admin";
+import { formatDateTime, formatNumber } from "../../utils/adminFormatters";
 
 interface WalletActivityRow {
   id: string;
@@ -12,11 +14,15 @@ interface WalletActivityRow {
 
 const timeRanges = ["All Time", "7 Days", "1 month", "1 Year", "Custom"];
 
-const activityRows: WalletActivityRow[] = [
-  { id: "1", activity: "BTC Wallet funded", date: "22/10/25 - 07:22 AM" },
-  { id: "2", activity: "NGN to GHC Conversion completed", date: "22/10/25 - 07:22 AM" },
-  { id: "3", activity: "USDT transferred to escrow wallet", date: "22/10/25 - 07:22 AM" },
-];
+const getCryptoIcon = (code: string) => {
+  const icons: Record<string, string> = {
+    BTC: images.logos_bitcoin,
+    USDT: images.cryptocurrency_color_usdt,
+    ETH: images.image_27,
+    USDC: images.image_25,
+  };
+  return icons[code?.toUpperCase()] || images.logos_bitcoin;
+};
 
 const MasterWallet: React.FC = () => {
   const [selectedTimeRange, setSelectedTimeRange] = useState("All Time");
@@ -47,39 +53,144 @@ const MasterWallet: React.FC = () => {
   const cryptoHeaderWalletRef = useRef<HTMLDivElement | null>(null);
   const walletTypeFilterRef = useRef<HTMLDivElement | null>(null);
   const providerFilterRef = useRef<HTMLDivElement | null>(null);
+  const [masterWallets, setMasterWallets] = useState<any[]>([]);
+  const [walletOverview, setWalletOverview] = useState<any>(null);
+  const [activityRows, setActivityRows] = useState<WalletActivityRow[]>([]);
+  const [loadingWallets, setLoadingWallets] = useState(true);
+  const [loadingActivity, setLoadingActivity] = useState(true);
 
-  const fiatCurrencyOptions = [
-    { code: "NGN", label: "Nigeria (NGN)", balance: "Bal : N200,000", icon: images.flag },
-    { code: "BWP", label: "Botswana (BWP)", balance: "Bal : P200,000", icon: images.flag2 },
-    { code: "GHC", label: "Ghana (GHC)", balance: "Bal : G200,000", icon: images.flag3 },
-    { code: "KES", label: "Kenya (KES)", balance: "Bal : Ksh200,000", icon: images.flag4 },
-    { code: "ZAR", label: "South Africa (ZAR)", balance: "Bal : R200,000", icon: images.flag5 },
-    { code: "TZS", label: "Tanzania (TZS)", balance: "Bal : Tsh200,000", icon: images.flag6 },
-    { code: "UGX", label: "Uganda (UGX)", balance: "Bal : USh200,000", icon: images.flag7 },
-  ];
-  const cryptoCurrencyOptions = [
-    { code: "BTC", label: "Bitcoin (BTC)", balance: "Bal : 0.0001 BTC", icon: images.logos_bitcoin },
-    { code: "USDT", label: "Tether (USDT)", balance: "Bal : 1000 USDT", icon: images.cryptocurrency_color_usdt },
-    { code: "ETH", label: "Ethereum (ETH)", balance: "Bal : 0 ETH", icon: images.image_27 },
-    { code: "USDC", label: "Circle (USDC)", balance: "Bal : 10 USDC", icon: images.image_25 },
-  ];
+  useEffect(() => {
+    const loadWallets = async () => {
+      setLoadingWallets(true);
+      try {
+        const [wallets, overview] = await Promise.all([
+          fetchMasterWallets({ range: selectedTimeRange }),
+          fetchWalletOverview({ range: selectedTimeRange }),
+        ]);
+        setMasterWallets(Array.isArray(wallets) ? wallets : []);
+        setWalletOverview(overview || null);
+      } catch (error) {
+        console.error("Failed to load master wallets:", error);
+        setMasterWallets([]);
+        setWalletOverview(null);
+      } finally {
+        setLoadingWallets(false);
+      }
+    };
+    loadWallets();
+  }, [selectedTimeRange]);
+
+  useEffect(() => {
+    const loadActivity = async () => {
+      setLoadingActivity(true);
+      try {
+        const data = await fetchMasterWalletActivity({
+          range: selectedTimeRange,
+          search: activitySearch.trim() || undefined,
+          limit: 100,
+        });
+        setActivityRows(
+          (data?.items || []).map((item: any) => ({
+            id: String(item.id),
+            activity: item.activity,
+            date: formatDateTime(item.date),
+          }))
+        );
+      } catch (error) {
+        console.error("Failed to load wallet activity:", error);
+        setActivityRows([]);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+    loadActivity();
+  }, [selectedTimeRange, activitySearch]);
+
+  const fiatCurrencyOptions = useMemo(() => {
+    if (!walletOverview) {
+      return [{ code: "FIAT", label: "Platform Fiat", balance: "Bal : —", icon: images.flag }];
+    }
+    return [
+      {
+        code: "FIAT",
+        label: "All Fiat Wallets",
+        balance: `Bal : ${formatNumber(walletOverview.totalFiatBalance ?? 0)}`,
+        icon: images.flag,
+      },
+    ];
+  }, [walletOverview]);
+  const cryptoCurrencyOptions = useMemo(() => {
+    if (!masterWallets.length) {
+      return [
+        { code: "BTC", label: "Bitcoin (BTC)", balance: "Bal : —", icon: images.logos_bitcoin },
+      ];
+    }
+    return masterWallets.map((wallet) => ({
+      code: wallet.currency || wallet.blockchain,
+      label: `${wallet.blockchain} (${wallet.currency || wallet.blockchain})`,
+      balance: `Bal : ${wallet.balance != null ? wallet.balance : "—"}`,
+      icon: getCryptoIcon(wallet.blockchain || wallet.currency),
+    }));
+  }, [masterWallets]);
   const fiatUnitOptions = ["USD", "EUR", "GBP"];
   const fiatHeaderWalletOptions = ["All Wallets", "Yellow card wallet", "A2A Finance", "Paystack"];
   const cryptoHeaderWalletOptions = ["All Wallets", "Yellow card wallet", "A2A Finance", "Paystack"];
   const walletTypeFilterOptions = ["Crypto Wallet", "Fiat Wallet", "Escrow Wallet"];
   const providerFilterOptions = ["Tatum Wallet", "Binance Wallet", "Stripe Wallet"];
-  const fiatWalletPopupRows = [
-    { name: "Nigerian (NGN) Wallet", amount: "N200,000.00", icon: images.flag },
-    { name: "Ghanian (GHC) Wallet", amount: "C0.00", icon: images.flag3 },
-    { name: "Kenyan (KSH) Wallet", amount: "Ksh20.00", icon: images.flag4 },
-    { name: "South African (ZAR) Wallet", amount: "R200.00", icon: images.flag5 },
-  ];
-  const cryptoWalletPopupRows = [
-    { name: "Bitcoin (BTC) Wallet", amount: "0.00123", icon: images.logos_bitcoin },
-    { name: "Tether (USDT) Wallet", amount: "100,000", icon: images.cryptocurrency_color_usdt },
-    { name: "Ethereum (ETH) Wallet", amount: "0.00123", icon: images.image_27 },
-    { name: "Circle (USDC) Wallet", amount: "0.00123", icon: images.image_25 },
-  ];
+  const fiatWalletPopupRows = useMemo(() => {
+    if (!walletOverview) return [];
+    return [
+      {
+        name: "Platform Fiat Balance",
+        amount: formatNumber(walletOverview.totalFiatBalance ?? 0),
+        icon: images.flag,
+      },
+      {
+        name: `Fiat Wallets (${walletOverview.fiatWalletCount ?? 0})`,
+        amount: formatNumber(walletOverview.totalFiatBalance ?? 0),
+        icon: images.flag3,
+      },
+    ];
+  }, [walletOverview]);
+  const cryptoWalletPopupRows = useMemo(
+    () =>
+      masterWallets.map((wallet) => ({
+        name: `${wallet.blockchain} Wallet`,
+        amount: wallet.balance != null ? String(wallet.balance) : "0.00",
+        icon: getCryptoIcon(wallet.blockchain || wallet.currency),
+      })),
+    [masterWallets]
+  );
+
+  const tokenCards = useMemo(() => {
+    const cards = masterWallets.slice(0, 6).map((wallet) => ({
+      id: String(wallet.id),
+      token: wallet.currency || wallet.blockchain,
+      value: wallet.balance != null ? formatNumber(wallet.balance) : "—",
+      icon: getCryptoIcon(wallet.blockchain || wallet.currency),
+      cardClass: "bg-[#67DA39]",
+      tokenClass: "text-[#13370B]",
+      valueClass: "text-[#072E08]",
+    }));
+    if (cards.length === 0) return cards;
+    if (cards.length <= 3) {
+      return [...cards, { id: "view-1", isView: true as const }];
+    }
+    return [
+      ...cards.slice(0, 3),
+      { id: "view-1", isView: true as const },
+      ...cards.slice(3, 6),
+      { id: "view-2", isView: true as const },
+    ];
+  }, [masterWallets]);
+
+  const selectedCryptoWallet = useMemo(
+    () =>
+      masterWallets.find(
+        (wallet) => (wallet.currency || wallet.blockchain) === selectedCryptoCurrency
+      ),
+    [masterWallets, selectedCryptoCurrency]
+  );
 
   useEffect(() => {
     const handleOutside = (event: MouseEvent) => {
@@ -234,7 +345,14 @@ const MasterWallet: React.FC = () => {
                   <div>
                     <p className="text-[8px] text-[#D7E8FB]">{title}</p>
                     <p className="text-[34px] leading-none text-white">
-                      <span className="text-[10px]">n</span>200,000
+                      {loadingWallets ? (
+                        "..."
+                      ) : (
+                        <>
+                          <span className="text-[10px]">n</span>
+                          {formatNumber(0)}
+                        </>
+                      )}
                     </p>
                   </div>
                 </div>
@@ -622,7 +740,7 @@ const MasterWallet: React.FC = () => {
               />
               <div className="relative z-[350] flex items-center justify-between text-[8px] text-[#1D3A1A]">
                 <span />
-                <span>BTC Balance</span>
+                <span>{selectedCryptoCurrency} Balance</span>
                 <div className="relative" ref={cryptoCurrencyRef}>
                   <button
                     onClick={() => setShowCryptoCurrencyDropdown((prev) => !prev)}
@@ -694,7 +812,11 @@ const MasterWallet: React.FC = () => {
                   letterSpacing: "0%",
                 }}
               >
-                0.0003.00
+                {loadingWallets
+                  ? "..."
+                  : selectedCryptoWallet?.balance != null
+                    ? formatNumber(selectedCryptoWallet.balance)
+                    : "0.00"}
               </p>
               <div className="relative z-10 mt-4 flex items-center justify-center gap-5">
                 {[
@@ -719,77 +841,20 @@ const MasterWallet: React.FC = () => {
         </div>
 
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-8">
-          {[
-            {
-              id: "ngn-1",
-              token: "NGN",
-              value: "N20,000",
-              icon: images.flag,
-              cardClass: "bg-[#3A72B2]",
-              tokenClass: "text-[#D7E8FB]",
-              valueClass: "text-white",
-            },
-            {
-              id: "ngn-2",
-              token: "NGN",
-              value: "N20,000",
-              icon: images.flag,
-              cardClass: "bg-[#3A72B2]",
-              tokenClass: "text-[#D7E8FB]",
-              valueClass: "text-white",
-            },
-            {
-              id: "ngn-3",
-              token: "NGN",
-              value: "N20,000",
-              icon: images.flag,
-              cardClass: "bg-[#3A72B2]",
-              tokenClass: "text-[#D7E8FB]",
-              valueClass: "text-white",
-            },
-            { id: "view-1", isView: true },
-            {
-              id: "usdt",
-              token: "USDT",
-              value: "1,000",
-              icon: images.cryptocurrency_color_usdt,
-              cardClass: "bg-[#67DA39]",
-              tokenClass: "text-[#13370B]",
-              valueClass: "text-[#072E08]",
-            },
-            {
-              id: "usdc",
-              token: "USDC",
-              value: "1,000",
-              icon: images.image_25,
-              cardClass: "bg-[#67DA39]",
-              tokenClass: "text-[#13370B]",
-              valueClass: "text-[#072E08]",
-            },
-            {
-              id: "eth",
-              token: "ETH",
-              value: "0.0123",
-              icon: images.image_27,
-              cardClass: "bg-[#67DA39]",
-              tokenClass: "text-[#13370B]",
-              valueClass: "text-[#072E08]",
-            },
-            { id: "view-2", isView: true },
-          ].map((item) => (
+          {(tokenCards.length ? tokenCards : [{ id: "view-1", isView: true as const }]).map((item) => (
             <div
               key={item.id}
-              className={`h-[62px] rounded-[10px] px-3 py-2 ${item.isView ? "bg-[#F2F4F7]" : item.cardClass}`}
+              className={`h-[62px] rounded-[10px] px-3 py-2 ${"isView" in item && item.isView ? "bg-[#F2F4F7]" : (item as { cardClass: string }).cardClass}`}
             >
-              {item.isView ? (
+              {"isView" in item && item.isView ? (
                 <button className="h-full w-full text-[14px] text-[#1A2129]">View All</button>
               ) : (
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <img src={item.icon} alt={`${item.token} icon`} className="h-[14px] w-[14px] object-contain" />
-                    <p className={`text-[8px] ${item.tokenClass}`}>{item.token}</p>
+                    <img src={(item as { icon: string }).icon} alt={`${(item as { token: string }).token} icon`} className="h-[14px] w-[14px] object-contain" />
+                    <p className={`text-[8px] ${(item as { tokenClass: string }).tokenClass}`}>{(item as { token: string }).token}</p>
                   </div>
-                  <p className={`pt-1 pl-1 text-[18px] leading-none ${item.valueClass}`}>{item.value}</p>
+                  <p className={`pt-1 pl-1 text-[18px] leading-none ${(item as { valueClass: string }).valueClass}`}>{(item as { value: string }).value}</p>
                 </div>
               )}
             </div>
@@ -1046,7 +1111,16 @@ const MasterWallet: React.FC = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
+              {loadingActivity ? (
+                <tr className="border-b border-[#2B363E] text-[11px] text-[#CFD7DD]">
+                  <td colSpan={3} className="px-3 py-6 text-center">Loading activity...</td>
+                </tr>
+              ) : filteredRows.length === 0 ? (
+                <tr className="border-b border-[#2B363E] text-[11px] text-[#CFD7DD]">
+                  <td colSpan={3} className="px-3 py-6 text-center">No wallet activity found</td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
                 <tr key={row.id} className="border-b border-[#2B363E] text-[11px] text-white">
                   <td className="px-3 py-3">
                     <input
@@ -1059,7 +1133,7 @@ const MasterWallet: React.FC = () => {
                   <td className="px-3 py-3 text-[#CFD7DD]">{row.activity}</td>
                   <td className="px-3 py-3 text-[#CFD7DD]">{row.date}</td>
                 </tr>
-              ))}
+              )))}
             </tbody>
           </table>
         </div>

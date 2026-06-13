@@ -1,12 +1,15 @@
 import React, { useState, useRef, useEffect } from "react";
 import images from "../../constants/images";
+import { approveKyc, fetchKycByUserId, rejectKyc } from "../../services/admin";
 
 interface KYCDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  userId?: string | number;
+  onSuccess?: () => void;
 }
 
-const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) => {
+const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose, userId, onSuccess }) => {
   const [formData, setFormData] = useState({
     country: "",
     firstName: "",
@@ -20,7 +23,10 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) =>
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [showIdTypeDropdown, setShowIdTypeDropdown] = useState(false);
   const [showChangeStatusDropdown, setShowChangeStatusDropdown] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [_showDatePicker, setShowDatePicker] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showIdNumberDropdown, setShowIdNumberDropdown] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
@@ -57,6 +63,34 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) =>
   const selectedCountry = countries.find(c => c.value === formData.country);
   const selectedIdType = idTypes.find(t => t.value === formData.idType);
   const selectedChangeStatus = changeStatuses.find(s => s.value === formData.changeStatus);
+
+  // Load KYC record when modal opens
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    const loadKyc = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await fetchKycByUserId(userId);
+        const kyc = data?.kyc || data;
+        setFormData({
+          country: data?.country?.name || "",
+          firstName: data?.firstName || "",
+          lastName: data?.lastName || "",
+          middleName: "",
+          dateOfBirth: kyc?.dateOfBirth ? String(kyc.dateOfBirth).slice(0, 10) : "",
+          idType: kyc?.idType || "",
+          idNumber: kyc?.idNumber || "",
+          changeStatus: kyc?.status || "",
+        });
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load KYC");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadKyc();
+  }, [isOpen, userId]);
 
   // Close modal on outside click
   useEffect(() => {
@@ -135,11 +169,25 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) =>
     setShowChangeStatusDropdown(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log("KYC Details submitted:", formData);
-    onClose();
+    if (!userId) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const status = formData.changeStatus.toLowerCase();
+      if (status === "verified" || status === "approved") {
+        await approveKyc(userId);
+      } else if (status === "rejected") {
+        await rejectKyc(userId, "Rejected by admin");
+      }
+      onSuccess?.();
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update KYC");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -942,9 +990,12 @@ const KYCDetailsModal: React.FC<KYCDetailsModalProps> = ({ isOpen, onClose }) =>
           </div>
 
           {/* Submit Button */}
+          {loading && <p className="text-sm text-gray-400 mb-2">Loading KYC details...</p>}
+          {error && <p className="text-sm text-red-400 mb-2">{error}</p>}
           <button
             type="submit"
-            className="text-black flex items-center justify-center mt-8"
+            disabled={submitting || loading}
+            className="text-black flex items-center justify-center mt-8 disabled:opacity-50"
             style={{
               width: "174px",
               height: "60px",

@@ -1,6 +1,14 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getUsers, User } from "../../../../services/userService";
+import { User } from "../../../../services/userService";
+import {
+  fetchUserById,
+  fetchUserP2P,
+  fetchP2PPaymentMethods,
+  updateP2PAdStatus,
+  updateP2POrderStatus,
+} from "../../../../services/admin";
+import { formatDateTime, mapApiUser } from "../../../../utils/adminFormatters";
 import images from "../../../../constants/images";
 
 interface P2PAd {
@@ -17,6 +25,8 @@ interface P2PAd {
 
 interface Order {
   id: string;
+  adId?: string;
+  rawStatus?: string;
   orderType: string;
   token: string;
   country: string;
@@ -25,6 +35,15 @@ interface Order {
   vendor: string;
   status: "Completed" | "Awaiting Release" | "Order placed" | "Awaiting Payment";
   date: string;
+}
+
+interface PaymentAccount {
+  id: number;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  selected: boolean;
+  type: string;
 }
 
 const P2PProfile: React.FC = () => {
@@ -44,7 +63,7 @@ const P2PProfile: React.FC = () => {
   const [selectedAds, setSelectedAds] = useState<Set<string>>(new Set());
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [showAdModal, setShowAdModal] = useState(false);
-  const [selectedAd, setSelectedAd] = useState<any>(null);
+  const [selectedAd, setSelectedAd] = useState<P2PAd | null>(null);
   const [showOpenAdModal, setShowOpenAdModal] = useState(false);
   const [openAdType, setOpenAdType] = useState<'USDT' | 'ETH'>('USDT');
   const [showChatModal, setShowChatModal] = useState(false);
@@ -55,7 +74,7 @@ const P2PProfile: React.FC = () => {
   const [showPaymentAccountsModal, setShowPaymentAccountsModal] = useState(false);
   const [showAccountTypeDropdown, setShowAccountTypeDropdown] = useState(false);
   const [selectedAccountType, setSelectedAccountType] = useState('All');
-  const [showAccountNumber, setShowAccountNumber] = useState<{ [key: number]: boolean }>({});
+  const [_showAccountNumber, _setShowAccountNumber] = useState<{ [key: number]: boolean }>({});
   const [showAddNewAccountModal, setShowAddNewAccountModal] = useState(false);
   const [showAddAccountTypeDropdown, setShowAddAccountTypeDropdown] = useState(false);
   const [selectedAddAccountType, setSelectedAddAccountType] = useState('Select Account type');
@@ -70,6 +89,12 @@ const P2PProfile: React.FC = () => {
   const [showAwaitingReleaseModal, setShowAwaitingReleaseModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState<Order | null>(null);
+  const [p2pAds, setP2pAds] = useState<P2PAd[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<PaymentAccount[]>([]);
+  const [p2pRefreshKey, setP2pRefreshKey] = useState(0);
+
+  const reloadP2P = useCallback(() => setP2pRefreshKey((key) => key + 1), []);
 
   const countryDropdownRef = useRef<HTMLDivElement>(null);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
@@ -86,140 +111,150 @@ const P2PProfile: React.FC = () => {
   const statusOptionsOrders = ["All Status", "Order Placed", "Awaiting Payment", "Awaiting Release", "Completed"];
   const buyOptions = ["All Ad type", "Buy ad", "Sell Ads"];
 
-  // Sample P2P Ads data
-  const p2pAds: P2PAd[] = [
-    {
-      id: "1",
-      adType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      noOfOrders: "500",
-      status: "success",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "2",
-      adType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      noOfOrders: "500",
-      status: "success",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "3",
-      adType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      noOfOrders: "500",
-      status: "success",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "4",
-      adType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      noOfOrders: "500",
-      status: "success",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "5",
-      adType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      noOfOrders: "500",
-      status: "success",
-      date: "22/10/25 - 07:22 AM"
-    }
-  ];
+  const mapP2PStatus = (status: string): P2PAd["status"] => {
+    if (status === "available" || status === "completed") return "success";
+    if (status === "paused" || status === "pending") return "pending";
+    return "failed";
+  };
 
-  // Sample Orders data
-  const orders: Order[] = [
-    {
-      id: "1",
-      orderType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      vendor: "Chris Shawn",
-      status: "Completed",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "2",
-      orderType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      vendor: "Chris Shawn",
-      status: "Completed",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "3",
-      orderType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      vendor: "Chris Shawn",
-      status: "Awaiting Release",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "4",
-      orderType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      vendor: "Chris Shawn",
-      status: "Order placed",
-      date: "22/10/25 - 07:22 AM"
-    },
-    {
-      id: "5",
-      orderType: "Buy - USDT",
-      token: "USDT",
-      country: "Nigeria",
-      qty: "100",
-      amount: "$100",
-      vendor: "Chris Shawn",
-      status: "Awaiting Payment",
-      date: "22/10/25 - 07:22 AM"
-    }
-  ];
+  const mapOrderStatus = (status: string): Order["status"] => {
+    const map: Record<string, Order["status"]> = {
+      completed: "Completed",
+      awaiting_coin_release: "Awaiting Release",
+      pending: "Order placed",
+      awaiting_payment: "Awaiting Payment",
+      payment_made: "Awaiting Release",
+    };
+    return map[status] || "Order placed";
+  };
 
   useEffect(() => {
-    const loadUser = async () => {
+    if (!username) return;
+
+    const loadUserAndP2P = async () => {
       setLoading(true);
       try {
-        const users = await getUsers(false);
-        const foundUser = users.find(u => u.id === username || u.name.toLowerCase().includes(username?.toLowerCase() || ""));
-        setUser(foundUser || users[0]);
+        const [userData, p2pData] = await Promise.all([
+          fetchUserById(username),
+          fetchUserP2P(username),
+        ]);
+        const mappedUser = mapApiUser(userData) as User;
+        setUser(mappedUser);
+
+        const apiAds = (p2pData?.ads || []).map((ad: Record<string, any>) => ({
+          id: String(ad.id),
+          adType: `${ad.type === "sell" ? "Sell" : "Buy"} - ${ad.cryptoCurrency}`,
+          token: ad.cryptoCurrency,
+          country: ad.countryCode || ad.fiatCurrency || "N/A",
+          qty: String(ad.volume ?? 0),
+          amount: `${ad.fiatCurrency || ""}${ad.price ?? 0}`,
+          noOfOrders: String(ad.ordersReceived ?? 0),
+          status: mapP2PStatus(ad.status),
+          date: formatDateTime(ad.createdAt),
+        }));
+        const apiOrders = (p2pData?.orders || []).map((order: Record<string, any>) => ({
+          id: String(order.id),
+          adId: String(order.adId),
+          rawStatus: order.status,
+          orderType: `${order.type === "sell" ? "Sell" : "Buy"} - ${order.cryptoCurrency}`,
+          token: order.cryptoCurrency,
+          country: order.fiatCurrency || "N/A",
+          qty: String(order.cryptoAmount ?? 0),
+          amount: `${order.fiatCurrency || ""}${order.fiatAmount ?? 0}`,
+          vendor: order.vendor?.firstName
+            ? `${order.vendor.firstName} ${order.vendor.lastName || ""}`.trim()
+            : "Vendor",
+          status: mapOrderStatus(order.status),
+          date: formatDateTime(order.createdAt),
+        }));
+
+        setP2pAds(apiAds);
+        setOrders(apiOrders);
+
+        if (mappedUser?.id) {
+          try {
+            const methods = await fetchP2PPaymentMethods(mappedUser.id);
+            setPaymentAccounts(
+              (Array.isArray(methods) ? methods : []).map((method: Record<string, any>) => ({
+                id: method.id,
+                bankName: method.bankName || method.type || "Payment method",
+                accountNumber: method.accountNumber || method.phoneNumber || "—",
+                accountName: method.accountName || "—",
+                selected: Boolean(method.isDefault),
+                type: method.type || "bank_account",
+              }))
+            );
+          } catch (paymentError) {
+            console.error("Failed to load payment methods:", paymentError);
+            setPaymentAccounts([]);
+          }
+        } else {
+          setPaymentAccounts([]);
+        }
       } catch (error) {
-        console.error('Failed to load user:', error);
+        console.error('Failed to load P2P profile:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadUser();
-  }, [username]);
+    loadUserAndP2P();
+  }, [username, p2pRefreshKey]);
+
+  const orderTabStatuses: Record<string, string[]> = {
+    Received: ["pending", "payment_made"],
+    Unpaid: ["awaiting_payment"],
+    Paid: ["awaiting_coin_release"],
+    Appeal: ["disputed"],
+  };
+
+  const selectedAdOrders = useMemo(() => {
+    if (!selectedAd) return orders;
+    return orders.filter((order) => order.adId === selectedAd.id);
+  }, [selectedAd, orders]);
+
+  const filteredAdOrders = useMemo(() => {
+    const statuses = orderTabStatuses[selectedOrderTab] || [];
+    if (!statuses.length) return selectedAdOrders;
+    return selectedAdOrders.filter((order) => statuses.includes(order.rawStatus || ""));
+  }, [selectedAdOrders, selectedOrderTab]);
+
+  const handleAdStatusChange = async (status: string) => {
+    if (!selectedAd) return;
+    try {
+      await updateP2PAdStatus(selectedAd.id, status);
+      setShowOpenAdModal(false);
+      setShowAdModal(false);
+      reloadP2P();
+    } catch (error) {
+      console.error("Failed to update ad:", error);
+    }
+  };
+
+  const handleOrderStatusChange = async (orderId: string, status: string) => {
+    try {
+      await updateP2POrderStatus(orderId, status);
+      reloadP2P();
+    } catch (error) {
+      console.error("Failed to update order:", error);
+    }
+  };
+
+  const handleAcceptAllOrders = async () => {
+    const pending = filteredAdOrders.filter((order) =>
+      ["pending", "payment_made"].includes(order.rawStatus || "")
+    );
+    await Promise.all(pending.map((order) => updateP2POrderStatus(order.id, "awaiting_payment")));
+    reloadP2P();
+  };
+
+  const handleDeclineAllOrders = async () => {
+    const pending = filteredAdOrders.filter((order) =>
+      ["pending", "awaiting_payment"].includes(order.rawStatus || "")
+    );
+    await Promise.all(pending.map((order) => updateP2POrderStatus(order.id, "cancelled")));
+    reloadP2P();
+  };
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -2091,7 +2126,7 @@ const P2PProfile: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          setOpenAdType('USDT');
+                          setOpenAdType((selectedAd?.token as 'USDT' | 'ETH') || 'USDT');
                           setShowOpenAdModal(true);
                         }}
                         style={{
@@ -2253,7 +2288,7 @@ const P2PProfile: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          setOpenAdType('USDT');
+                          setOpenAdType((selectedAd?.token as 'USDT' | 'ETH') || 'USDT');
                           setShowOpenAdModal(true);
                         }}
                         style={{
@@ -2525,11 +2560,8 @@ const P2PProfile: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => {
-                      // Handle delete ad functionality
-                      if (window.confirm('Are you sure you want to delete this ad?')) {
-                        // Add delete logic here
-                        console.log('Delete ad');
-                      }
+                      if (!window.confirm('Are you sure you want to delete this ad?')) return;
+                      handleAdStatusChange('unavailable');
                     }}
                     style={{
                       padding: '8px 20px',
@@ -2546,11 +2578,7 @@ const P2PProfile: React.FC = () => {
                     Delete Ad
                   </button>
                   <button
-                    onClick={() => {
-                      // Handle edit ad functionality
-                      console.log('Edit ad');
-                      // Add edit logic here
-                    }}
+                    onClick={() => handleAdStatusChange('paused')}
                     style={{
                       padding: '8px 20px',
                       borderRadius: '20px',
@@ -2607,9 +2635,7 @@ const P2PProfile: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px' }}>
                   <button
                     onClick={() => {
-                      // Handle accept all orders
-                      console.log('Accept all orders');
-                      // Add accept all logic here
+                      handleAcceptAllOrders().catch(console.error);
                     }}
                     style={{
                       padding: '6px 12px',
@@ -2626,9 +2652,7 @@ const P2PProfile: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      // Handle decline all orders
-                      console.log('Decline all orders');
-                      // Add decline all logic here
+                      handleDeclineAllOrders().catch(console.error);
                     }}
                     style={{
                       padding: '6px 12px',
@@ -2648,9 +2672,11 @@ const P2PProfile: React.FC = () => {
 
               {/* Order Cards */}
               <div className="space-y-3">
-                {[1, 2, 3].map((order) => (
+                {filteredAdOrders.length === 0 ? (
+                  <p className="text-sm text-gray-400">No orders for this tab.</p>
+                ) : filteredAdOrders.map((order) => (
                   <div
-                    key={order}
+                    key={order.id}
                     style={{
                       backgroundColor: '#222A36',
                       borderRadius: '12px',
@@ -2688,20 +2714,20 @@ const P2PProfile: React.FC = () => {
                             <p className="text-white text-sm font-semibold mb-0.5" style={{
                               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif'
                             }}>
-                              Qamar Malik
+                              {order.vendor}
                             </p>
                             <p className="text-gray-400 text-xs mb-0.5" style={{
                               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                               display: 'inline'
                             }}>
-                              Sell {openAdType}{' '}
+                              {order.orderType}{' '}
                             </p>
                             <span style={{
                               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                               fontSize: '12px',
                               color: '#A9EF45'
                             }}>
-                              Active
+                              {order.status}
                             </span>
                           </div>
                         </div>
@@ -2710,20 +2736,20 @@ const P2PProfile: React.FC = () => {
                             fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                             color: '#A9EF45'
                           }}>
-                            N20,000{' '}
+                            {order.amount}{' '}
                             <span style={{
                               fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif',
                               fontSize: '12px',
                               color: '#9CA3AF',
                               fontWeight: 'normal'
                             }}>
-                              (15 {openAdType})
+                              ({order.qty} {order.token})
                             </span>
                           </p>
                           <p className="text-gray-400 text-xs" style={{
                             fontFamily: 'SF Pro, -apple-system, BlinkMacSystemFont, sans-serif'
                           }}>
-                            Oct 15, 2025
+                            {order.date}
                           </p>
                         </div>
                       </div>
@@ -2762,10 +2788,7 @@ const P2PProfile: React.FC = () => {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              // Handle cancel order
-                              console.log('Cancel order', order);
-                              alert(`Cancel order ${order}`);
-                              // Add cancel logic here
+                              handleOrderStatusChange(order.id, "cancelled").catch(console.error);
                             }}
                             style={{
                               padding: '6px 12px',
@@ -2787,13 +2810,10 @@ const P2PProfile: React.FC = () => {
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              if (order === 2) {
+                              if (order.rawStatus === "disputed") {
                                 setShowChatModal(true);
                               } else {
-                                // Handle accept order
-                                console.log('Accept order', order);
-                                alert(`Accept order ${order}`);
-                                // Add accept logic here
+                                handleOrderStatusChange(order.id, "awaiting_payment").catch(console.error);
                               }
                             }}
                             style={{
@@ -2811,7 +2831,7 @@ const P2PProfile: React.FC = () => {
                               position: 'relative'
                             }}
                           >
-                            {order === 2 ? 'View' : 'Accept'}
+                            {order.rawStatus === "disputed" ? "View" : "Accept"}
                           </button>
                         </div>
                       </div>
@@ -3645,10 +3665,9 @@ const P2PProfile: React.FC = () => {
             {/* Bank Accounts List */}
             <div style={{ backgroundColor: '#0A1420', borderRadius: '12px', padding: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {[
-                  { id: 1, bankName: 'Opay', accountNumber: '1234567890', accountName: 'Qamardeen Abdul Malik', selected: true },
-                  { id: 2, bankName: 'Opay', accountNumber: '1234567890', accountName: 'Qamardeen Abdul Malik', selected: false }
-                ].map((account) => (
+                {paymentAccounts.length === 0 ? (
+                  <p className="text-sm text-gray-400">No payment methods found.</p>
+                ) : paymentAccounts.map((account) => (
                   <div key={account.id}>
                     {/* Bank Transfer Label and Selected Badge */}
                     {account.selected && (
@@ -3815,7 +3834,7 @@ const P2PProfile: React.FC = () => {
                     }}>
                       <button
                         onClick={() => {
-                          console.log('Edit account', account.id);
+                          window.alert("Payment methods are read-only in admin view.");
                         }}
                         style={{
                           background: 'none',
@@ -3835,9 +3854,7 @@ const P2PProfile: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
-                          if (window.confirm('Are you sure you want to delete this account?')) {
-                            console.log('Delete account', account.id);
-                          }
+                          window.alert("Payment methods cannot be deleted from admin panel.");
                         }}
                         style={{
                           background: 'none',
@@ -3939,10 +3956,8 @@ const P2PProfile: React.FC = () => {
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <button
                   onClick={() => {
-                    // Handle add new account submission
-                    console.log('Add account:', { selectedAddAccountType, bankName, accountNumber, accountName });
+                    window.alert("Adding payment methods is not supported in admin panel.");
                     setShowAddNewAccountModal(false);
-                    // Reset form
                     setSelectedAddAccountType('Select Account type');
                     setBankName('');
                     setAccountNumber('');
